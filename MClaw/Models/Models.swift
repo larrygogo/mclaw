@@ -1,0 +1,86 @@
+import Foundation
+
+// MARK: - Gateway
+
+struct GatewayConfig: Codable, Identifiable, Equatable, Hashable {
+    var id: String = UUID().uuidString
+    var name: String
+    var url: String
+    var token: String
+}
+
+// MARK: - Agent
+
+struct AgentInfo: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let avatar: String
+    let color: String
+}
+
+enum AgentStatus: String, Codable {
+    case working, idle, waiting, offline
+}
+
+struct AgentState {
+    var id: String
+    var status: AgentStatus = .offline
+    var currentTask: String?
+    var lastActivity: Date?
+    var streamingText: String?
+}
+
+// MARK: - Conversation
+
+enum ConversationKind: Hashable {
+    case user   // 我的：用户直接发起的对话
+    case a2a    // 员工：agent 之间的对话
+}
+
+struct Conversation: Identifiable, Hashable {
+    static func == (lhs: Conversation, rhs: Conversation) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    let id: String
+    let sessionKey: String       // primary session key (user conversations)
+    var sessionKeys: [String] = [] // all session keys (A2A grouped conversations)
+    let agentId: String
+    let displayName: String
+    let avatar: String
+    let color: String
+    let kind: ConversationKind
+    // A2A only: the other party in the conversation
+    var secondaryAgentId: String = ""
+    var secondaryName: String = ""
+    var secondaryAvatar: String = "cpu"
+    var lastMessageText: String = ""
+    var lastTimestamp: Date = .distantPast
+    var historyLoaded: Bool = false      // initial batch loaded
+    var fullyLoaded: Bool = false        // all sessions loaded
+    var loadedSessionCount: Int = 0      // how many session keys have been loaded
+
+    /// All session keys this conversation covers
+    var allSessionKeys: [String] {
+        sessionKeys.isEmpty ? [sessionKey] : sessionKeys
+    }
+}
+
+// MARK: - Message
+
+struct ChatMessage: Identifiable, Equatable {
+    let id: String
+    let sessionKey: String
+    let agentId: String
+    let role: MessageRole
+    let text: String
+    let timestamp: Date
+    let runId: String?
+    var localImageData: Data? = nil  // for locally sent images
+
+    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+enum MessageRole: String {
+    case agent, user, system
+}
