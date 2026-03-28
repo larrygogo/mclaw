@@ -1,23 +1,9 @@
 import SwiftUI
 
-// MARK: - MClaw color palette
-
-private let mcColors: [Color] = [
-    Color(hex: "39ff14"),
-    Color(hex: "32cd32"),
-    Color(hex: "00ff41"),
-    Color(hex: "0fff50"),
-    Color(hex: "7fff00"),
-    Color(hex: "76ff03"),
-    Color(hex: "39ff14"),
-    Color(hex: "00e676"),
-    Color(hex: "69f0ae"),
-    Color(hex: "b2ff59"),
-]
-
-private let mcGreen  = Color(hex: "39ff14")
-private let mcMint   = Color(hex: "b6ffa8")
-private let mcBg     = Color(hex: "0a0a0f")
+private let mcColors = Theme.greenPalette
+private let mcGreen  = Theme.green
+private let mcMint   = Theme.mint
+private let mcBg     = Theme.bg
 
 struct OfficeView: View {
     @Environment(AppStore.self) var store
@@ -426,39 +412,3 @@ struct AgentDetailSheet: View {
     }
 }
 
-// MARK: - Color from hex
-
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let r = Double((int >> 16) & 0xFF) / 255
-        let g = Double((int >> 8) & 0xFF) / 255
-        let b = Double(int & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
-    }
-}
-
-// MARK: - Avatar Icon (emoji or SF Symbol)
-
-struct AvatarIcon: View {
-    let avatar: String
-    let color: Color
-    let size: CGFloat
-
-    private var isSFSymbol: Bool {
-        !avatar.isEmpty && avatar.allSatisfy { $0.isASCII }
-    }
-
-    var body: some View {
-        if isSFSymbol {
-            Image(systemName: avatar)
-                .font(.system(size: size * 0.45, weight: .light))
-                .foregroundStyle(color)
-        } else {
-            Text(verbatim: avatar)
-                .font(.system(size: size * 0.5))
-        }
-    }
-}

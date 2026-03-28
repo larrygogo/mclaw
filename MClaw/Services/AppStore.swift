@@ -3,8 +3,7 @@ import SwiftData
 import UIKit
 
 private let avatars = ["star.fill", "building.columns", "laptopcomputer", "magnifyingglass", "map", "wrench.and.screwdriver", "lightbulb", "target", "flask", "safari"]
-private let colors  = ["#6c5ce7", "#a29bfe", "#00e676", "#ffd600", "#18ffff",
-                       "#ff7043", "#ec407a", "#ab47bc", "#26a69a", "#78909c"]
+private let colors = Theme.agentColors
 
 private let gatewaysKey = "mclaw-gateways"
 private let activeGatewayKey = "mclaw-active-gateway"

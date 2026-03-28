@@ -1,8 +1,8 @@
 import SwiftUI
 
-private let mcGreen = Color(hex: "39ff14")
-private let mcMint  = Color(hex: "b6ffa8")
-private let mcBg    = Color(hex: "0a0a0f")
+private let mcGreen = Theme.green
+private let mcMint  = Theme.mint
+private let mcBg    = Theme.bg
 
 struct SettingsView: View {
     @Environment(AppStore.self) var store

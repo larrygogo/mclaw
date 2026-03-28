@@ -3,9 +3,9 @@ import PhotosUI
 import Speech
 import AVFoundation
 
-private let mcGreen = Color(hex: "39ff14")
-private let mcMint  = Color(hex: "b6ffa8")
-private let mcBg    = Color(hex: "0a0a0f")
+private let mcGreen = Theme.green
+private let mcMint  = Theme.mint
+private let mcBg    = Theme.bg
 
 // MARK: - Message Center (Conversation List)
 
@@ -528,22 +528,19 @@ struct MessageListView: View {
 
     @State private var loadMoreTriggered = false
     @State private var didInitialScroll = false
-    @State private var anchorBeforeLoad: String?
-    @State private var lastMessageCount = 0
+    @State private var readyForLoadMore = false
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 4) {
+                VStack(spacing: 4) {
                     // Load more trigger at top
-                    if !fullyMounted && didInitialScroll {
+                    if !fullyMounted && readyForLoadMore {
                         ProgressView().tint(mcGreen)
                             .padding(.vertical, 8)
                             .onAppear {
                                 guard !loadMoreTriggered else { return }
                                 loadMoreTriggered = true
-                                // Save the first message as anchor before loading
-                                anchorBeforeLoad = messages.first?.id
                                 onMountMore()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                                     loadMoreTriggered = false
@@ -575,32 +572,26 @@ struct MessageListView: View {
                         StreamingBubble(text: streaming, avatar: agentAvatar)
                             .id("streaming")
                     }
+
+                    // Invisible bottom anchor
+                    Color.clear.frame(height: 1).id("__bottom__")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
             }
-            .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
             .onAppear {
-                if !didInitialScroll {
-                    lastMessageCount = messages.count
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        if let lastId = messages.last?.id {
-                            proxy.scrollTo(lastId, anchor: .bottom)
-                        }
-                        didInitialScroll = true
-                    }
+                if !didInitialScroll && !messages.isEmpty {
+                    scrollToBottom(proxy)
                 }
             }
             .onChange(of: messages.count) { oldCount, newCount in
-                if let anchor = anchorBeforeLoad, newCount > oldCount {
-                    // Older messages were prepended — restore position
-                    anchorBeforeLoad = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        withAnimation(.none) {
-                            proxy.scrollTo(anchor, anchor: .top)
-                        }
-                    }
+                if !didInitialScroll && newCount > 0 {
+                    scrollToBottom(proxy)
+                }
+                // New live message arrived — scroll to bottom
+                if didInitialScroll && readyForLoadMore && newCount == oldCount + 1 {
+                    proxy.scrollTo("__bottom__")
                 }
             }
         }
@@ -650,6 +641,14 @@ struct MessageListView: View {
         let date: String
         let label: String
         let messages: [ChatMessage]
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        didInitialScroll = true
+        proxy.scrollTo("__bottom__")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            readyForLoadMore = true
+        }
     }
 }
 
@@ -1041,52 +1040,6 @@ struct ImageViewer: View {
     }
 }
 
-// MARK: - Selectable Text (UITextView wrapper for drag-to-select)
-
-struct SelectableText: UIViewRepresentable {
-    let text: String
-    let fontSize: CGFloat
-
-    func makeUIView(context: Context) -> UITextView {
-        let tv = UITextView()
-        tv.isEditable = false
-        tv.isSelectable = true
-        tv.isScrollEnabled = false
-        tv.backgroundColor = .clear
-        tv.textContainerInset = .zero
-        tv.textContainer.lineFragmentPadding = 0
-        tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        configure(tv)
-        return tv
-    }
-
-    func updateUIView(_ tv: UITextView, context: Context) {
-        configure(tv)
-    }
-
-    private func configure(_ tv: UITextView) {
-        if let data = text.data(using: .utf8),
-           let nsAttr = try? NSAttributedString(markdown: data, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            let mutable = NSMutableAttributedString(attributedString: nsAttr)
-            mutable.addAttribute(.foregroundColor, value: UIColor.white, range: NSRange(location: 0, length: mutable.length))
-            mutable.addAttribute(.font, value: UIFont.systemFont(ofSize: fontSize), range: NSRange(location: 0, length: mutable.length))
-            tv.attributedText = mutable
-        } else {
-            tv.text = text
-            tv.textColor = .white
-            tv.font = .systemFont(ofSize: fontSize)
-        }
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
-        let maxWidth = proposal.width ?? UIScreen.main.bounds.width - 80
-        // Measure natural width first
-        let natural = uiView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude))
-        let width = min(natural.width, maxWidth)
-        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        return CGSize(width: width, height: size.height)
-    }
-}
 
 // MARK: - Attachment Sheet
 

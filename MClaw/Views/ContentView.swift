@@ -1,6 +1,6 @@
 import SwiftUI
 
-private let mcGreen = Color(hex: "39ff14")
+private let mcGreen = Theme.green
 
 struct ContentView: View {
     @Environment(AppStore.self) var store
