@@ -145,16 +145,7 @@ struct ConversationRow: View {
 
     var timeString: String {
         guard conversation.lastTimestamp > .distantPast else { return "" }
-        let f = DateFormatter()
-        let cal = Calendar.current
-        if cal.isDateInToday(conversation.lastTimestamp) {
-            f.dateFormat = "HH:mm"
-        } else if cal.isDateInYesterday(conversation.lastTimestamp) {
-            f.dateFormat = "昨天"
-        } else {
-            f.dateFormat = "M/d"
-        }
-        return f.string(from: conversation.lastTimestamp)
+        return formatRowTime(conversation.lastTimestamp)
     }
 
     var body: some View {
@@ -492,24 +483,6 @@ struct ConversationDetailView: View {
         }
     }
 
-    private func compressImage(_ data: Data, maxBytes: Int) -> Data? {
-        guard let uiImage = UIImage(data: data) else { return data }
-        // If already small enough, use original
-        if data.count <= maxBytes { return data }
-        // Progressively reduce quality
-        for quality in stride(from: 0.8, through: 0.1, by: -0.1) {
-            if let compressed = uiImage.jpegData(compressionQuality: quality),
-               compressed.count <= maxBytes {
-                return compressed
-            }
-        }
-        // Still too large — resize
-        let scale = sqrt(Double(maxBytes) / Double(data.count))
-        let newSize = CGSize(width: uiImage.size.width * scale, height: uiImage.size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        let resized = renderer.image { _ in uiImage.draw(in: CGRect(origin: .zero, size: newSize)) }
-        return resized.jpegData(compressionQuality: 0.7)
-    }
 }
 
 // MARK: - Message List
@@ -626,16 +599,7 @@ struct MessageListView: View {
         return groups
     }
 
-    private func dateLabel(for date: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(date) { return "今天" }
-        if cal.isDateInYesterday(date) { return "昨天" }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "zh-Hans")
-        f.dateFormat = cal.component(.year, from: date) == cal.component(.year, from: Date())
-            ? "M月d日 EEEE" : "yyyy年M月d日 EEEE"
-        return f.string(from: date)
-    }
+    private func dateLabel(for date: Date) -> String { formatDateSectionLabel(date) }
 
     struct DateGroup {
         let date: String
@@ -666,11 +630,7 @@ struct A2AMessageBubble: View {
     var bubbleColor: Color { isOrchestrator ? Color(hex: conversation.color).opacity(0.15) : Color.white.opacity(0.06) }
     var avatarColor: Color { isOrchestrator ? Color(hex: conversation.color) : .white.opacity(0.5) }
 
-    var timeString: String {
-        let f = DateFormatter()
-        f.dateFormat = Calendar.current.isDateInToday(message.timestamp) ? "HH:mm" : "M/d HH:mm"
-        return f.string(from: message.timestamp)
-    }
+    var timeString: String { formatA2ABubbleTime(message.timestamp) }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -712,29 +672,11 @@ struct MessageBubble: View {
 
     var isUser: Bool { message.role == .user }
 
-    var timeString: String {
-        let f = DateFormatter()
-        let cal = Calendar.current
-        if cal.isDateInToday(message.timestamp) {
-            f.dateFormat = "HH:mm"
-        } else if cal.isDateInYesterday(message.timestamp) {
-            f.dateFormat = "昨天 HH:mm"
-        } else {
-            f.dateFormat = "M/d HH:mm"
-        }
-        return f.string(from: message.timestamp)
-    }
+    var timeString: String { formatBubbleTime(message.timestamp) }
 
     @State private var fullscreenImage: UIImage? = nil
 
-    // Extract text (without images) and images separately
-    private var textOnly: String {
-        let pattern = #"!\[[^\]]*\]\([^)]+\)|data:image\/[^;]+;base64,[A-Za-z0-9+/=\n]+"#
-        let cleaned = (try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]))
-            .map { $0.stringByReplacingMatches(in: message.text, range: NSRange(location: 0, length: (message.text as NSString).length), withTemplate: "") } ?? message.text
-        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
+    private var textOnly: String { stripImagesFromText(message.text) }
     private var hasText: Bool { !textOnly.isEmpty }
 
     var body: some View {
@@ -841,43 +783,7 @@ struct MessageContentView: View {
     var localImageData: Data? = nil
     @State private var fullscreenImage: UIImage? = nil
 
-    // Extract image URLs (markdown ![](url) or data:image/... URLs)
-    private var parts: [(kind: PartKind, value: String)] {
-        var result: [(kind: PartKind, value: String)] = []
-        let pattern = #"!\[[^\]]*\]\(([^)]+)\)|(?:^|\n)(data:image\/[^;]+;base64,[A-Za-z0-9+/=\n]+)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
-            return [(.text, text)]
-        }
-
-        var lastEnd = text.startIndex
-        let nsText = text as NSString
-        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
-
-        for match in matches {
-            let matchRange = Range(match.range, in: text)!
-            // Text before this match
-            if lastEnd < matchRange.lowerBound {
-                let before = String(text[lastEnd..<matchRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                if !before.isEmpty { result.append((.text, before)) }
-            }
-            // Image URL
-            if let urlRange = Range(match.range(at: 1), in: text) {
-                result.append((.image, String(text[urlRange])))
-            } else if let dataRange = Range(match.range(at: 2), in: text) {
-                result.append((.image, String(text[dataRange])))
-            }
-            lastEnd = matchRange.upperBound
-        }
-        // Remaining text
-        if lastEnd < text.endIndex {
-            let remaining = String(text[lastEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            if !remaining.isEmpty { result.append((.text, remaining)) }
-        }
-
-        return result.isEmpty ? [(.text, text)] : result
-    }
-
-    enum PartKind { case text, image }
+    private var parts: [MessagePart] { parseMessageParts(text) }
 
     var body: some View {
         let content = Group {
