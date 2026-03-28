@@ -32,64 +32,33 @@ final class AppStore {
     var scrollPositions: [String: String] = [:]  // conversationId → message ID at scroll position
 
     let gateway = GatewayClient()
-    private var modelContainer: ModelContainer?
+    let persistence: PersistenceService
 
     // MARK: - Init
 
     init(modelContainer: ModelContainer? = nil) {
-        self.modelContainer = modelContainer
+        self.persistence = PersistenceService(modelContainer: modelContainer)
         loadGateways()
         gateway.onEvent { [weak self] event, payload in
             self?.handleEvent(event, payload: payload)
         }
     }
 
-    // MARK: - SwiftData
+    // MARK: - Cache
 
     @MainActor
     func loadCachedMessages() {
-        guard let container = modelContainer, !activeGatewayId.isEmpty else { return }
-        let gwId = activeGatewayId
-        let context = container.mainContext
-        var descriptor = FetchDescriptor<PersistedMessage>(
-            predicate: #Predicate { $0.gatewayId == gwId },
-            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-        )
-        descriptor.fetchLimit = 2000
-        guard let persisted = try? context.fetch(descriptor) else { return }
-        messages = persisted.reversed().map { $0.toChatMessage() }
+        messages = persistence.loadCachedMessages(gatewayId: activeGatewayId)
     }
 
-    func getCacheSize() -> String {
-        guard let container = modelContainer else { return "0" }
-        let context = container.mainContext
-        let count = (try? context.fetchCount(FetchDescriptor<PersistedMessage>())) ?? 0
-        if count == 0 { return "无缓存" }
-        // Estimate size from store file
-        let config = ModelConfiguration("MClaw")
-        let url = config.url
-        let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
-        let sizeMB = Double(fileSize) / 1_000_000
-        if sizeMB >= 1 {
-            return String(format: "%d 条 / %.1fMB", count, sizeMB)
-        }
-        return String(format: "%d 条 / %.0fKB", count, Double(fileSize) / 1000)
-    }
+    func getCacheSize() -> String { persistence.getCacheSize() }
 
     func clearCache() {
-        guard let container = modelContainer else { return }
-        let context = container.mainContext
-        do {
-            try context.delete(model: PersistedMessage.self)
-            try context.save()
-        } catch {
-            NSLog("[store] clearCache error: %@", "\(error)")
-        }
+        persistence.clearPersistedMessages()
         messages = []
         mountedCounts = [:]
         scrollPositions = [:]
 
-        // Reset loading state so conversations re-fetch from server
         for i in conversations.indices {
             conversations[i].historyLoaded = false
             conversations[i].fullyLoaded = false
@@ -97,7 +66,6 @@ final class AppStore {
             conversations[i].lastMessageText = ""
         }
 
-        // Re-fetch from server
         if isConnected {
             let snapshot = conversations
             Task {
@@ -108,15 +76,8 @@ final class AppStore {
         }
     }
 
-    private func persistMessages(_ newMessages: [ChatMessage]) {
-        guard let container = modelContainer, !newMessages.isEmpty, !activeGatewayId.isEmpty else { return }
-        let gwId = activeGatewayId
-        let context = ModelContext(container)
-        context.autosaveEnabled = false
-        for msg in newMessages {
-            context.insert(PersistedMessage(from: msg, gatewayId: gwId))
-        }
-        try? context.save()
+    func persistMessages(_ newMessages: [ChatMessage]) {
+        persistence.persistMessages(newMessages, gatewayId: activeGatewayId)
     }
 
     // MARK: - Gateway config persistence
