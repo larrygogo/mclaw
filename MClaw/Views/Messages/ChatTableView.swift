@@ -29,6 +29,12 @@ struct ChatTableView: UIViewRepresentable {
         tv.delegate = context.coordinator
         tv.register(UITableViewCell.self, forCellReuseIdentifier: "msg")
         context.coordinator.tableView = tv
+
+        // Tap anywhere to dismiss text selection
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
+        tap.cancelsTouchesInView = false
+        tv.addGestureRecognizer(tap)
+
         return tv
     }
 
@@ -120,6 +126,10 @@ struct ChatTableView: UIViewRepresentable {
             .background(.clear)
 
             return cell
+        }
+
+        @objc func handleTap() {
+            tableView?.endEditing(true)
         }
 
         // MARK: - Delegate (load more)
