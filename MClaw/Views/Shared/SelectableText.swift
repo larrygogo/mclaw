@@ -7,28 +7,43 @@ struct SelectableText: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeUIView(context: Context) -> SelectableTextView {
-        let tv = SelectableTextView()
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView()
+        container.backgroundColor = .clear
+
+        let tv = UITextView()
         tv.isEditable = false
-        tv.isSelectable = false // disabled until long press
+        tv.isSelectable = false
         tv.isScrollEnabled = false
         tv.backgroundColor = .clear
         tv.textContainerInset = .zero
         tv.textContainer.lineFragmentPadding = 0
         tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        tv.coordinator = context.coordinator
+        tv.tag = 100
+        container.addSubview(tv)
+
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            tv.topAnchor.constraint(equalTo: container.topAnchor),
+            tv.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            tv.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            tv.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        ])
+
         context.coordinator.textView = tv
 
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
         longPress.minimumPressDuration = 0.4
-        tv.addGestureRecognizer(longPress)
+        container.addGestureRecognizer(longPress)
 
         configure(tv)
-        return tv
+        return container
     }
 
-    func updateUIView(_ tv: SelectableTextView, context: Context) {
-        configure(tv)
+    func updateUIView(_ container: UIView, context: Context) {
+        if let tv = container.viewWithTag(100) as? UITextView {
+            configure(tv)
+        }
     }
 
     private func configure(_ tv: UITextView) {
@@ -45,46 +60,36 @@ struct SelectableText: UIViewRepresentable {
         }
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: SelectableTextView, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? {
+        guard let tv = uiView.viewWithTag(100) as? UITextView else { return nil }
         let maxWidth = proposal.width ?? UIScreen.main.bounds.width - 80
-        let natural = uiView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude))
+        let natural = tv.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude))
         let width = min(natural.width, maxWidth)
-        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        let size = tv.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: size.height)
     }
 
-    // MARK: - Coordinator
-
     class Coordinator: NSObject {
-        weak var textView: SelectableTextView?
+        weak var textView: UITextView?
 
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began, let tv = textView else { return }
             tv.isSelectable = true
+            tv.isUserInteractionEnabled = true
             tv.becomeFirstResponder()
             tv.selectAll(nil)
+
+            // Listen for tap outside to dismiss
+            NotificationCenter.default.addObserver(self, selector: #selector(dismissSelection),
+                                                   name: UIMenuController.willHideMenuNotification, object: nil)
         }
 
-        func deactivateSelection() {
+        @objc func dismissSelection() {
             guard let tv = textView else { return }
             tv.selectedTextRange = nil
             tv.isSelectable = false
             tv.resignFirstResponder()
+            NotificationCenter.default.removeObserver(self, name: UIMenuController.willHideMenuNotification, object: nil)
         }
-    }
-}
-
-// MARK: - Custom UITextView that deactivates selection on outside tap
-
-class SelectableTextView: UITextView {
-    weak var coordinator: SelectableText.Coordinator?
-
-    override func resignFirstResponder() -> Bool {
-        let result = super.resignFirstResponder()
-        // When losing focus (tap outside), deactivate selection
-        DispatchQueue.main.async { [weak self] in
-            self?.coordinator?.deactivateSelection()
-        }
-        return result
     }
 }
