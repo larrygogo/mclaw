@@ -43,9 +43,17 @@ struct ChatTableView: UIViewRepresentable {
         let coord = context.coordinator
         coord.parent = self
         coord.rebuildItems()
-        // Flipped table: older messages added at high indices (visual top).
-        // UITableView.reloadData() preserves contentOffset, so position stays stable.
         tv.reloadData()
+
+        // Few messages: push content to visual top (= native bottom inset in flipped table)
+        tv.layoutIfNeeded()
+        let contentH = tv.contentSize.height
+        let frameH = tv.frame.height
+        if contentH < frameH {
+            tv.contentInset.top = frameH - contentH
+        } else {
+            tv.contentInset.top = 0
+        }
     }
 
     // MARK: - Data items
