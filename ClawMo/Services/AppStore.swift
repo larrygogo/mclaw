@@ -270,7 +270,6 @@ final class AppStore {
                     await fetchAllSessions(for: conv)
                 }
             }
-
         } catch {
             isConnecting = false
             if let gwErr = error as? GatewayClientError, case .pairingRequired(let deviceId, let requestId) = gwErr {

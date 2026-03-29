@@ -478,11 +478,11 @@ struct AnyCodable: Codable {
     init(_ value: Any) { self.value = value }
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        if let v = try? container.decode(Bool.self) { value = v }
-        else if let v = try? container.decode(Int.self) { value = v }
-        else if let v = try? container.decode(Double.self) { value = v }
-        else if let v = try? container.decode(String.self) { value = v }
-        else { value = NSNull() }
+        if let v = try? container.decode(Bool.self) { value = v
+        } else if let v = try? container.decode(Int.self) { value = v
+        } else if let v = try? container.decode(Double.self) { value = v
+        } else if let v = try? container.decode(String.self) { value = v
+        } else { value = NSNull() }
     }
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()

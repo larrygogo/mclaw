@@ -44,8 +44,11 @@ final class ConversationService {
                 let parentAgent = agents.first(where: { $0.id == parentAgentId }) ?? agentInfo
                 let pairKey = [parentAgentId, agentId].sorted().joined(separator: ":")
                 if a2aGroups[pairKey] != nil {
+                    // swiftlint:disable:next force_unwrapping
                     a2aGroups[pairKey]!.keys.append(key)
+                    // swiftlint:disable:next force_unwrapping
                     if updatedAt > a2aGroups[pairKey]!.latestUpdatedAt {
+                        // swiftlint:disable:next force_unwrapping
                         a2aGroups[pairKey]!.latestUpdatedAt = updatedAt
                     }
                 } else {
@@ -54,8 +57,11 @@ final class ConversationService {
                 }
             } else {
                 if userGroups[agentId] != nil {
+                    // swiftlint:disable:next force_unwrapping
                     userGroups[agentId]!.keys.append(key)
+                    // swiftlint:disable:next force_unwrapping
                     if updatedAt > userGroups[agentId]!.latestUpdatedAt {
+                        // swiftlint:disable:next force_unwrapping
                         userGroups[agentId]!.latestUpdatedAt = updatedAt
                     }
                 } else {

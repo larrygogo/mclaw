@@ -6,8 +6,8 @@ private let mcGreen = Theme.green
 
 struct MessageContentView: View {
     let text: String
-    var localImageData: Data? = nil
-    @State private var fullscreenImage: UIImage? = nil
+    var localImageData: Data?
+    @State private var fullscreenImage: UIImage?
 
     private var parts: [MessagePart] { parseMessageParts(text) }
 

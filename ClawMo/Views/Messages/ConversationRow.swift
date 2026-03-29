@@ -36,14 +36,23 @@ struct ConversationRow: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color(hex: conversation.color).opacity(0.15))
-                            AvatarIcon(avatar: conversation.avatar, color: Color(hex: conversation.color), size: cellSize, agentId: conversation.agentId)
+                            AvatarIcon(
+                                avatar: conversation.avatar,
+                                color: Color(hex: conversation.color),
+                                size: cellSize, agentId: conversation.agentId
+                            )
                         }
                         .frame(width: cellSize, height: cellSize)
 
                         ZStack {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.white.opacity(0.06))
-                            AvatarIcon(avatar: conversation.secondaryAvatar, color: .white.opacity(0.5), size: cellSize, agentId: conversation.secondaryAgentId)
+                            AvatarIcon(
+                                avatar: conversation.secondaryAvatar,
+                                color: .white.opacity(0.5),
+                                size: cellSize,
+                                agentId: conversation.secondaryAgentId
+                            )
                         }
                         .frame(width: cellSize, height: cellSize)
                     }

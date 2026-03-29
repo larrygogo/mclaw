@@ -250,7 +250,12 @@ struct ConversationDetailView: View {
                 let text = "[文件: \(filename)]"
                 store.scrollPositions[conversation.id] = nil
                 Task {
-                    await store.sendMessage(sessionKey: conversation.sessionKey, agentId: conversation.agentId, text: text, imageData: data, fileSize: Int64(data.count))
+                    await store.sendMessage(
+                        sessionKey: conversation.sessionKey,
+                        agentId: conversation.agentId,
+                        text: text, imageData: data,
+                        fileSize: Int64(data.count)
+                    )
                     isSending = false
                 }
             }
@@ -331,6 +336,4 @@ struct ConversationDetailView: View {
             isSending = false
         }
     }
-
 }
-

@@ -10,12 +10,12 @@ import UIKit
 struct ChatTableView: UIViewRepresentable {
     let messages: [ChatMessage]
     let agentAvatar: String
-    var conversation: Conversation? = nil
+    var conversation: Conversation?
     let fullyMounted: Bool
     let onMountMore: () -> Void
-    var onRetry: ((ChatMessage) -> Void)? = nil
+    var onRetry: ((ChatMessage) -> Void)?
     var savedOffset: CGFloat?
-    var onOffsetChanged: ((CGFloat) -> Void)? = nil
+    var onOffsetChanged: ((CGFloat) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -69,7 +69,7 @@ struct ChatTableView: UIViewRepresentable {
 
     struct Item {
         let message: ChatMessage
-        var dateHeader: String? = nil  // shown above this message if it's the first of its day
+        var dateHeader: String?  // shown above this message if it's the first of its day
     }
 
     // MARK: - Coordinator
@@ -155,7 +155,10 @@ struct ChatTableView: UIViewRepresentable {
             return cell
         }
 
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool { true }
 
         @objc func handleTap() {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)

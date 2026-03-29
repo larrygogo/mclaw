@@ -79,7 +79,7 @@ final class MessageService {
     // MARK: - Event handlers
 
     func handleAgentEvent(_ payload: [String: Any]) {
-        guard let _ = store else { return }
+        guard store != nil else { return }
         guard let sessionKey = payload["sessionKey"] as? String,
               let agentId = Self.agentIdFromSessionKey(sessionKey),
               let stream = payload["stream"] as? String else { return }
@@ -106,7 +106,7 @@ final class MessageService {
     }
 
     func handleChatEvent(_ payload: [String: Any]) {
-        guard let _ = store else { return }
+        guard store != nil else { return }
         guard payload["state"] as? String == "final",
               let sessionKey = payload["sessionKey"] as? String,
               let agentId = Self.agentIdFromSessionKey(sessionKey),

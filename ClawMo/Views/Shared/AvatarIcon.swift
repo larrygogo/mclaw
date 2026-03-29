@@ -8,7 +8,7 @@ struct AvatarIcon: View {
     let avatar: String
     let color: Color
     let size: CGFloat
-    var agentId: String? = nil
+    var agentId: String?
 
     @State private var refreshId = UUID()
 

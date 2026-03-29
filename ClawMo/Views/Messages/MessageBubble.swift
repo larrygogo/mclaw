@@ -7,15 +7,15 @@ private let mcBg = Theme.bg
 struct MessageBubble: View {
     let message: ChatMessage
     let agentAvatar: String
-    var agentId: String? = nil
-    var senderName: String? = nil
-    var onRetry: (() -> Void)? = nil
+    var agentId: String?
+    var senderName: String?
+    var onRetry: (() -> Void)?
 
     var isUser: Bool { message.role == .user }
 
     var timeString: String { formatBubbleTime(message.timestamp) }
 
-    @State private var fullscreenImage: UIImage? = nil
+    @State private var fullscreenImage: UIImage?
 
     private var textOnly: String { stripImagesFromText(message.text) }
     private var hasText: Bool { !textOnly.isEmpty }
@@ -124,8 +124,6 @@ struct FileBubble: View {
         guard isTextFile, let data = fileData, let str = String(data: data, encoding: .utf8) else { return nil }
         return str
     }
-
-
 
     var body: some View {
         HStack(spacing: 0) {
@@ -308,8 +306,8 @@ struct EditMenuHost: UIViewRepresentable {
         }
 
         func editMenuInteraction(_ interaction: UIEditMenuInteraction,
-                                  menuFor configuration: UIEditMenuConfiguration,
-                                  suggestedActions: [UIMenuElement]) -> UIMenu? {
+                                 menuFor configuration: UIEditMenuConfiguration,
+                                 suggestedActions: [UIMenuElement]) -> UIMenu? {
             let items = actions.map { action in
                 UIAction(title: action.title, image: UIImage(systemName: action.icon)) { _ in action.handler() }
             }
@@ -317,7 +315,7 @@ struct EditMenuHost: UIViewRepresentable {
         }
 
         func editMenuInteraction(_ interaction: UIEditMenuInteraction,
-                                  willDismissMenuFor configuration: UIEditMenuConfiguration) {
+                                 willDismissMenuFor configuration: UIEditMenuConfiguration) {
             DispatchQueue.main.async { self.dismissBinding.wrappedValue = Date() }
         }
     }

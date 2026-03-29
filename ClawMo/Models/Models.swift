@@ -142,9 +142,9 @@ struct ChatMessage: Identifiable, Equatable {
     let text: String
     let timestamp: Date
     let runId: String?
-    var localImageData: Data? = nil
-    var sendStatus: MessageSendStatus? = nil  // nil = received from server
-    var fileSize: Int64? = nil
+    var localImageData: Data?
+    var sendStatus: MessageSendStatus?  // nil = received from server
+    var fileSize: Int64?
 
     var fileInfo: FileInfo? { FileInfo.parse(from: text) }
     var isFileMessage: Bool { fileInfo != nil }

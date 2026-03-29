@@ -7,7 +7,7 @@ private let mcBg = Theme.bg
 struct StreamingBubble: View {
     let text: String
     let avatar: String
-    var agentId: String? = nil
+    var agentId: String?
 
     var attributedText: AttributedString {
         (try? AttributedString(markdown: text)) ?? AttributedString(text)

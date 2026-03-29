@@ -51,8 +51,8 @@ struct ImageViewer: View {
                 )
                 .onTapGesture(count: 2) {
                     withAnimation(.easeInOut(duration: 0.25)) {
-                        if scale > 1 { scale = 1; offset = .zero }
-                        else { scale = 3 }
+                        if scale > 1 { scale = 1; offset = .zero
+                        } else { scale = 3 }
                     }
                 }
 

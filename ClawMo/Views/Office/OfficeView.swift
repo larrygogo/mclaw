@@ -590,4 +590,3 @@ struct IconPickerSheet: View {
         .presentationBackground(Theme.bg)
     }
 }
-

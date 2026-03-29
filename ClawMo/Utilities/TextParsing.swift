@@ -25,7 +25,7 @@ func parseMessageParts(_ text: String) -> [MessagePart] {
     let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
 
     for match in matches {
-        let matchRange = Range(match.range, in: text)!
+        guard let matchRange = Range(match.range, in: text) else { continue }
         if lastEnd < matchRange.lowerBound {
             let before = String(text[lastEnd..<matchRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
             if !before.isEmpty { result.append((.text, before)) }

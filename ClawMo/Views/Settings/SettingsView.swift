@@ -98,7 +98,7 @@ struct SettingsView: View {
                         }
                     }
                     .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: Theme.radiusM))
-                    
+
                     sectionHeader(title: "关于", icon: "info.circle")
 
                     VStack(spacing: 0) {
@@ -360,7 +360,7 @@ struct GatewayEditSheet: View {
                     let trimmedUrl = url.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard let parsed = URL(string: trimmedUrl),
                           let scheme = parsed.scheme?.lowercased(),
-                          (scheme == "ws" || scheme == "wss"),
+                          scheme == "ws" || scheme == "wss",
                           parsed.host != nil else {
                         urlError = "请输入有效的 WebSocket 地址 (ws:// 或 wss://)"
                         return
