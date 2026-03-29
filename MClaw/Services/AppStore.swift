@@ -1,9 +1,5 @@
 import Foundation
 import SwiftData
-import UIKit
-
-private let avatars = MockDataProvider.avatars
-private let colors = Theme.agentColors
 
 private let gatewaysKey = "mclaw-gateways"
 private let activeGatewayKey = "mclaw-active-gateway"
@@ -189,82 +185,12 @@ final class AppStore {
             isConnecting = false
 
             if let rawAgents = try? await gateway.listAgents() {
-                agentList = buildAgentList(rawAgents)
+                agentList = ConversationService.buildAgentList(rawAgents)
             }
 
             if let result = try? await gateway.listSessions(limit: 1000),
                let sessions = result["sessions"] as? [[String: Any]] {
-
-                struct GroupInfo {
-                    let agent: AgentInfo
-                    var keys: [String]
-                    var latestUpdatedAt: Date
-                }
-                struct A2AGroupInfo {
-                    let parentAgent: AgentInfo
-                    let childAgent: AgentInfo
-                    var keys: [String]
-                    var latestUpdatedAt: Date
-                }
-                var userGroups: [String: GroupInfo] = [:]
-                var a2aGroups: [String: A2AGroupInfo] = [:]
-
-                for session in sessions {
-                    guard let key = session["key"] as? String else { continue }
-                    let displayName = session["displayName"] as? String ?? ""
-                    let lastTo = session["lastTo"] as? String ?? ""
-                    let deliveryTo = (session["deliveryContext"] as? [String: Any])?["to"] as? String ?? ""
-                    let originProvider = (session["origin"] as? [String: Any])?["provider"] as? String ?? ""
-                    if displayName == "heartbeat" || lastTo == "heartbeat"
-                        || deliveryTo == "heartbeat" || originProvider == "heartbeat" { continue }
-
-                    guard let agentId = MessageService.agentIdFromSessionKey(key),
-                          let agentInfo = agentList.first(where: { $0.id == agentId }) else { continue }
-
-                    let updatedAt = (session["updatedAt"] as? Double).map { Date(timeIntervalSince1970: $0 / 1000) } ?? .distantPast
-                    let isA2A = key.contains(":subagent:")
-
-                    if isA2A {
-                        let parentKey = session["spawnedBy"] as? String ?? session["parentSessionKey"] as? String ?? ""
-                        let parentAgentId = MessageService.agentIdFromSessionKey(parentKey) ?? "main"
-                        let parentAgent = agentList.first(where: { $0.id == parentAgentId }) ?? agentInfo
-                        let pairKey = [parentAgentId, agentId].sorted().joined(separator: ":")
-                        if a2aGroups[pairKey] != nil {
-                            a2aGroups[pairKey]!.keys.append(key)
-                            if updatedAt > a2aGroups[pairKey]!.latestUpdatedAt { a2aGroups[pairKey]!.latestUpdatedAt = updatedAt }
-                        } else {
-                            a2aGroups[pairKey] = A2AGroupInfo(parentAgent: parentAgent, childAgent: agentInfo, keys: [key], latestUpdatedAt: updatedAt)
-                        }
-                    } else {
-                        if userGroups[agentId] != nil {
-                            userGroups[agentId]!.keys.append(key)
-                            if updatedAt > userGroups[agentId]!.latestUpdatedAt { userGroups[agentId]!.latestUpdatedAt = updatedAt }
-                        } else {
-                            userGroups[agentId] = GroupInfo(agent: agentInfo, keys: [key], latestUpdatedAt: updatedAt)
-                        }
-                    }
-                }
-
-                for (agentId, group) in userGroups {
-                    var conv = Conversation(id: "user:\(agentId)", sessionKey: group.keys.first ?? "",
-                                            sessionKeys: group.keys, agentId: agentId,
-                                            displayName: group.agent.name, avatar: group.agent.avatar,
-                                            color: group.agent.color, kind: .user)
-                    conv.lastTimestamp = group.latestUpdatedAt
-                    conversations.append(conv)
-                }
-
-                for (pairKey, group) in a2aGroups {
-                    var conv = Conversation(id: "a2a:\(pairKey)", sessionKey: group.keys.first ?? "",
-                                            sessionKeys: group.keys, agentId: group.childAgent.id,
-                                            displayName: group.parentAgent.name, avatar: group.parentAgent.avatar,
-                                            color: group.parentAgent.color, kind: .a2a)
-                    conv.secondaryAgentId = group.childAgent.id
-                    conv.secondaryName = group.childAgent.name
-                    conv.secondaryAvatar = group.childAgent.avatar
-                    conv.lastTimestamp = group.latestUpdatedAt
-                    conversations.append(conv)
-                }
+                conversations = ConversationService.buildConversations(from: sessions, agents: agentList)
             }
 
             activeGatewayId = config.id
@@ -405,17 +331,6 @@ final class AppStore {
             }
         default:
             break
-        }
-    }
-
-    private func buildAgentList(_ raw: [[String: Any]]) -> [AgentInfo] {
-        raw.enumerated().map { i, a in
-            let id = a["agentId"] as? String ?? a["id"] as? String ?? UUID().uuidString
-            let serverAvatar = a["avatar"] as? String ?? a["emoji"] as? String ?? a["icon"] as? String ?? ""
-            let avatar = serverAvatar.isEmpty ? avatars[i % avatars.count] : serverAvatar
-            let serverColor = a["color"] as? String ?? ""
-            let color = serverColor.isEmpty ? colors[i % colors.count] : serverColor
-            return AgentInfo(id: id, name: a["name"] as? String ?? "Agent", avatar: avatar, color: color)
         }
     }
 
