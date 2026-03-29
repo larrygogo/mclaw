@@ -11,7 +11,6 @@ struct SettingsView: View {
     @State private var connectingId: String?
     @State private var errorMessage: String?
     @State private var duplicateWarning = false
-    @State private var swipedId: String?
     @State private var showClearConfirm = false
     @State private var cacheSize: String = "计算中..."
 
@@ -24,20 +23,37 @@ struct SettingsView: View {
                     if store.gateways.isEmpty {
                         emptyState
                     } else {
-                        VStack(spacing: 10) {
+                        List {
                             ForEach(store.gateways) { gw in
                                 GatewayRow(
                                     config: gw,
                                     isConnected: store.isConnected && gw.id == store.activeGatewayId,
                                     isConnecting: connectingId == gw.id,
-                                    swipedId: $swipedId,
                                     onConnect: { connectTo(gw) },
-                                    onDisconnect: { store.disconnect() },
-                                    onEdit: { editingGateway = gw },
-                                    onDelete: { store.deleteGateway(id: gw.id) }
+                                    onDisconnect: { store.disconnect() }
                                 )
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        store.deleteGateway(id: gw.id)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                    Button {
+                                        editingGateway = gw
+                                    } label: {
+                                        Image(systemName: "square.and.pencil")
+                                    }
+                                    .tint(mcGreen)
+                                }
+                                .listRowBackground(Color.white.opacity(0.04))
+                                .listRowSeparatorTint(.white.opacity(0.04))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                             }
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .scrollDisabled(true)
+                        .frame(height: CGFloat(store.gateways.count) * 68)
                     }
 
                     if let error = errorMessage {
@@ -210,123 +226,52 @@ struct GatewayRow: View {
     let config: GatewayConfig
     let isConnected: Bool
     let isConnecting: Bool
-    @Binding var swipedId: String?
     let onConnect: () -> Void
     let onDisconnect: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    @State private var offset: CGFloat = 0
-    private let actionWidth: CGFloat = 120
-
-    private var isOpen: Bool { swipedId == config.id }
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            // Swipe action buttons (behind the card)
-            HStack(spacing: 28) {
-                Spacer()
-                Button(action: { withAnimation { swipedId = nil; offset = 0 }; onEdit() }) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(mcGreen)
+        HStack(spacing: 12) {
+            Button(action: isConnected ? onDisconnect : onConnect) {
+                ZStack {
+                    Circle()
+                        .fill(isConnected ? mcGreen.opacity(0.15) : Color.white.opacity(0.05))
+                        .frame(width: 36, height: 36)
+                    if isConnecting {
+                        ProgressView().controlSize(.small).tint(mcGreen)
+                    } else {
+                        Image(systemName: isConnected ? "powerplug.fill" : "powerplug")
+                            .font(.system(size: 14))
+                            .foregroundStyle(isConnected ? mcGreen : .white.opacity(0.3))
+                    }
                 }
-                .buttonStyle(.plain)
-                Button(action: { withAnimation { swipedId = nil; offset = 0 }; onDelete() }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(.red)
-                }
-                .buttonStyle(.plain)
             }
-            .padding(.trailing, 14)
+            .buttonStyle(.plain)
+            .disabled(isConnecting)
 
-            // Card content (must cover action buttons at offset=0)
-            HStack(spacing: 12) {
-                Button(action: isConnected ? onDisconnect : onConnect) {
-                    ZStack {
-                        Circle()
-                            .fill(isConnected ? mcGreen.opacity(0.15) : Color.white.opacity(0.05))
-                            .frame(width: 36, height: 36)
-                        if isConnecting {
-                            ProgressView().controlSize(.small).tint(mcGreen)
-                        } else {
-                            Image(systemName: isConnected ? "powerplug.fill" : "powerplug")
-                                .font(.system(size: 14))
-                                .foregroundStyle(isConnected ? mcGreen : .white.opacity(0.3))
-                        }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(config.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                    if isConnected {
+                        Text("已连接")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(mcGreen)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(mcGreen.opacity(0.15), in: Capsule())
                     }
                 }
-                .buttonStyle(.plain)
-                .disabled(isConnecting)
+                Text(config.url)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.25))
+                    .lineLimit(1)
+            }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(config.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.9))
-                        if isConnected {
-                            Text("已连接")
-                                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                .foregroundStyle(mcGreen)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(mcGreen.opacity(0.15), in: Capsule())
-                        }
-                    }
-                    Text(config.url)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.25))
-                        .lineLimit(1)
-                }
-
-                Spacer()
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.radiusM)
-                    .fill(Color(red: 18/255, green: 20/255, blue: 22/255))
-            )
-            .offset(x: offset)
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        let translation = value.translation.width
-                        if translation < 0 {
-                            // Close any other open row first
-                            if swipedId != nil && swipedId != config.id {
-                                swipedId = nil
-                            }
-                            offset = max(translation, -actionWidth)
-                        } else if isOpen {
-                            offset = min(-actionWidth + translation, 0)
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            if offset < -actionWidth / 2 {
-                                offset = -actionWidth
-                                swipedId = config.id
-                            } else {
-                                offset = 0
-                                if swipedId == config.id { swipedId = nil }
-                            }
-                        }
-                    }
-            )
-            .onTapGesture {
-                if isOpen {
-                    withAnimation(.easeOut(duration: 0.2)) { offset = 0; swipedId = nil }
-                }
-            }
-            .onChange(of: swipedId) {
-                // Another row opened → close this one
-                if swipedId != config.id && offset != 0 {
-                    withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
-                }
-            }
+            Spacer()
         }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 14)
     }
 }
 
