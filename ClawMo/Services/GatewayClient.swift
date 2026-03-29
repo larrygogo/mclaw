@@ -426,11 +426,22 @@ final class GatewayClient {
         }
     }
 
-    private func scheduleReconnect() {
-        reconnectTask = Task {
-            try? await Task.sleep(for: .seconds(5))
-            guard !suppressReconnect else { return }
-            try? await connect(url: gatewayURL, token: gatewayToken)
+    private func scheduleReconnect(delay: Int = 5) {
+        let url = gatewayURL
+        let token = gatewayToken
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !self.suppressReconnect, !url.isEmpty else { return }
+            NSLog("[GW] reconnect attempt (delay=%ds)", delay)
+            do {
+                try await self.connect(url: url, token: token)
+                NSLog("[GW] reconnect succeeded")
+            } catch {
+                NSLog("[GW] reconnect failed: %@", "\(error)")
+                guard !self.suppressReconnect else { return }
+                let nextDelay = min(delay * 2, 60)
+                self.scheduleReconnect(delay: nextDelay)
+            }
         }
     }
 }
