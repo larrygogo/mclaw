@@ -285,11 +285,30 @@ final class AppStore {
     }
 
     func retryMessage(_ msg: ChatMessage) async {
-        // Remove failed message
-        messages.removeAll { $0.id == msg.id }
-        // Resend
-        await sendMessage(sessionKey: msg.sessionKey, agentId: msg.agentId,
-                          text: msg.text, imageData: msg.localImageData)
+        // Reuse existing message — just flip status to .sending
+        // This prevents duplicate messages from multiple retry taps
+        guard let i = messages.firstIndex(where: { $0.id == msg.id }),
+              messages[i].sendStatus == .failed else { return }
+        let current = messages[i]
+        messages[i].sendStatus = .sending
+
+        if isMockMode {
+            updateMessageStatus(id: current.id, status: .sent)
+            return
+        }
+
+        do {
+            var attachments: [[String: Any]]?
+            if let imageData = current.localImageData {
+                attachments = [["type": "image", "mimeType": "image/jpeg", "content": imageData.base64EncodedString()]]
+            }
+            let msgText = current.text.isEmpty ? "请看图片" : current.text
+            try await gateway.sendChat(sessionKey: current.sessionKey, message: msgText, attachments: attachments)
+            updateMessageStatus(id: current.id, status: .sent)
+        } catch {
+            NSLog("[store] retry sendChat error: %@", "\(error)")
+            updateMessageStatus(id: current.id, status: .failed)
+        }
     }
 
     private func updateMessageStatus(id: String, status: MessageSendStatus) {

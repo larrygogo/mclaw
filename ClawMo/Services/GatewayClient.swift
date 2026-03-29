@@ -144,13 +144,22 @@ final class GatewayClient {
         let id = UUID().uuidString
         let msg: [String: Any] = ["type": "req", "id": id, "method": method, "params": params]
         let data = try JSONSerialization.data(withJSONObject: msg)
-        try await webSocketTask?.send(.data(data))
 
+        // Register continuation BEFORE sending to avoid race condition:
+        // if gateway responds before continuation is registered, the response would be dropped
         return try await withCheckedThrowingContinuation { continuation in
             pendingRequests[id] = continuation
             Task {
-                try await Task.sleep(for: .seconds(30))
-                if let cont = pendingRequests.removeValue(forKey: id) {
+                do {
+                    try await self.webSocketTask?.send(.data(data))
+                } catch {
+                    if let cont = self.pendingRequests.removeValue(forKey: id) {
+                        cont.resume(throwing: error)
+                    }
+                    return
+                }
+                try? await Task.sleep(for: .seconds(30))
+                if let cont = self.pendingRequests.removeValue(forKey: id) {
                     cont.resume(throwing: GatewayClientError.timeout)
                 }
             }
@@ -261,6 +270,11 @@ final class GatewayClient {
             while !Task.isCancelled, self.isConnected {
                 guard let message = try? await self.webSocketTask?.receive() else {
                     self.isConnected = false
+                    // Resume all pending requests so they fail immediately instead of waiting 30s
+                    for (_, cont) in self.pendingRequests {
+                        cont.resume(throwing: GatewayClientError.disconnected)
+                    }
+                    self.pendingRequests.removeAll()
                     if !self.suppressReconnect { self.scheduleReconnect() }
                     return
                 }
