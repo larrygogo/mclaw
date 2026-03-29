@@ -136,7 +136,14 @@ struct MessageCenterView: View {
 
                     if hasHiddenConversations {
                         Button {
-                            withAnimation { store.unhideAll() }
+                            let current = showSection == .user ? ConversationKind.user : ConversationKind.a2a
+                            let idsToRestore = store.conversations
+                                .filter { $0.kind == current && store.hiddenConversationIds.contains($0.id) }
+                                .map(\.id)
+                            withAnimation {
+                                for id in idsToRestore { store.unhideConversation(id) }
+                                Haptics.light()
+                            }
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "eye")

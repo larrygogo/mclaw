@@ -120,11 +120,6 @@ final class AppStore {
         hiddenConversationIds.remove(id)
     }
 
-    func unhideAll() {
-        hiddenConversationIds.removeAll()
-        Haptics.light()
-    }
-
     // MARK: - Delegated to MessageService
 
     func mountedMessages(for conversation: Conversation) -> [ChatMessage] {

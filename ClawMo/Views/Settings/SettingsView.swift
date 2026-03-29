@@ -53,7 +53,7 @@ struct SettingsView: View {
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
                         .scrollDisabled(true)
-                        .frame(height: CGFloat(store.gateways.count) * 68)
+                        .frame(height: max(CGFloat(store.gateways.count) * 60, 60))
                     }
 
                     if let error = errorMessage {
