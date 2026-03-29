@@ -78,7 +78,13 @@ struct SelectableText: UIViewRepresentable {
             tv.isSelectable = true
             tv.isUserInteractionEnabled = true
             tv.becomeFirstResponder()
-            tv.selectAll(nil)
+
+            // Place cursor at long press position
+            let point = gesture.location(in: tv)
+            if let pos = tv.closestPosition(to: point) {
+                tv.selectedTextRange = tv.textRange(from: pos, to: pos)
+            }
+
             addDismissTap()
         }
 
