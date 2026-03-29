@@ -13,6 +13,7 @@ struct MessageListView: View {
 
     @State private var loadMoreTriggered = false
     @State private var hasContent = false
+    @State private var anchorBeforeLoad: String?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -25,6 +26,7 @@ struct MessageListView: View {
                             .onAppear {
                                 guard !loadMoreTriggered else { return }
                                 loadMoreTriggered = true
+                                anchorBeforeLoad = messages.first?.id
                                 onMountMore()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                                     loadMoreTriggered = false
@@ -63,13 +65,18 @@ struct MessageListView: View {
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: messages.count) { oldCount, newCount in
                 if !hasContent && newCount > 0 {
-                    // First data arrived after empty render — scroll to bottom
                     hasContent = true
                     DispatchQueue.main.async {
                         proxy.scrollTo("__bottom__")
                     }
+                } else if let anchor = anchorBeforeLoad, newCount > oldCount + 1 {
+                    // Batch load (mount more) — restore to previous position
+                    anchorBeforeLoad = nil
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(anchor, anchor: .top)
+                    }
                 } else if hasContent && newCount == oldCount + 1 {
-                    // New live message — scroll to bottom
+                    // Single new live message — scroll to bottom
                     DispatchQueue.main.async {
                         proxy.scrollTo("__bottom__")
                     }
