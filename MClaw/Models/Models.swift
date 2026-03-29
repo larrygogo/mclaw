@@ -38,7 +38,9 @@ enum ConversationKind: Hashable {
 }
 
 struct Conversation: Identifiable, Hashable {
-    static func == (lhs: Conversation, rhs: Conversation) -> Bool { lhs.id == rhs.id }
+    static func == (lhs: Conversation, rhs: Conversation) -> Bool {
+        lhs.id == rhs.id && lhs.lastMessageText == rhs.lastMessageText && lhs.lastTimestamp == rhs.lastTimestamp
+    }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: String
     let sessionKey: String       // primary session key (user conversations)
