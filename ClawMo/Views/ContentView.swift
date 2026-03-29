@@ -4,6 +4,7 @@ private let mcGreen = Theme.green
 
 struct ContentView: View {
     @Environment(AppStore.self) var store
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         @Bindable var store = store
         TabView(selection: $store.selectedTab) {
@@ -33,6 +34,9 @@ struct ContentView: View {
                     await store.connect(to: active)
                 }
             }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            store.handleScenePhase(newPhase)
         }
     }
 }

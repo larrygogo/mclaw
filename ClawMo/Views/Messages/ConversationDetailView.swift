@@ -44,6 +44,8 @@ struct ConversationDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            ConnectionBanner()
+
             if messages.isEmpty && !liveConversation.historyLoaded {
                 VStack(spacing: 12) {
                     ProgressView().tint(mcGreen)

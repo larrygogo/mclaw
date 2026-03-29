@@ -49,6 +49,18 @@ final class MessageService {
 
     func addMessage(_ msg: ChatMessage) {
         guard let store else { return }
+
+        // If server message matches a locally sent message, unify the ID
+        if !msg.id.hasPrefix("local-"),
+           let localIdx = store.messages.firstIndex(where: {
+               $0.id.hasPrefix("local-")
+               && $0.sessionKey == msg.sessionKey && $0.role == msg.role && $0.text == msg.text
+               && abs($0.timestamp.timeIntervalSince(msg.timestamp)) < 60
+           }) {
+            store.messages[localIdx].id = msg.id
+            return
+        }
+
         guard !store.messages.contains(where: {
             $0.id == msg.id ||
             ($0.sessionKey == msg.sessionKey && $0.role == msg.role && $0.text == msg.text
@@ -161,6 +173,17 @@ final class MessageService {
                 ?? "hist-\(sessionKey)-\(openclaw?["seq"] as? Int ?? Int(ts.timeIntervalSince1970))-\(role ?? "x")"
 
             let msgRole: MessageRole = role == "assistant" ? .agent : .user
+
+            // If history message matches a locally sent message, unify the ID
+            if let localIdx = store.messages.firstIndex(where: {
+                $0.id.hasPrefix("local-")
+                && $0.sessionKey == sessionKey && $0.role == msgRole && $0.text == text
+                && abs($0.timestamp.timeIntervalSince(ts)) < 60
+            }) {
+                store.messages[localIdx].id = msgId
+                continue
+            }
+
             let isDuplicate = store.messages.contains(where: {
                 $0.id == msgId ||
                 ($0.sessionKey == sessionKey && $0.role == msgRole && $0.text == text

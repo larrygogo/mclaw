@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import SwiftData
 
 private let gatewaysKey = "clawmo-gateways"
@@ -29,6 +30,10 @@ final class AppStore {
     var scrollOffsets: [String: CGFloat] = [:]    // conversationId → UITableView contentOffset.y
     var draftTexts: [String: String] = [:]           // conversationId → draft input text
 
+    // Sync
+    var backgroundedAt: Date?
+    private var isSyncing = false
+
     // Navigation
     var selectedTab = 0
     var pendingConversationId: String?
@@ -36,7 +41,9 @@ final class AppStore {
 
     let gateway = GatewayClient()
     let persistence: PersistenceService
+    let networkMonitor = NetworkMonitor()
     private(set) var messageService: MessageService!
+    private var networkObserver: Any?
 
     // MARK: - Init
 
@@ -46,6 +53,12 @@ final class AppStore {
         self.messageService = MessageService(store: self)
         gateway.onEvent { [weak self] event, payload in
             self?.handleEvent(event, payload: payload)
+        }
+        networkMonitor.start()
+        networkObserver = NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { [weak self] _ in
+            guard let self, !self.gateway.isConnected, !self.isMockMode,
+                  let active = self.gateways.first(where: { $0.id == self.activeGatewayId }) else { return }
+            Task { await self.connect(to: active) }
         }
     }
 
@@ -126,16 +139,25 @@ final class AppStore {
     // MARK: - Gateway Config
 
     func loadGateways() {
-        if let data = UserDefaults.standard.data(forKey: gatewaysKey),
+        // Try Keychain first
+        if let data = KeychainService.load(key: gatewaysKey),
            let decoded = try? JSONDecoder().decode([GatewayConfig].self, from: data) {
             gateways = decoded
+        }
+        // Migrate from UserDefaults if Keychain empty
+        else if let data = UserDefaults.standard.data(forKey: gatewaysKey),
+                let decoded = try? JSONDecoder().decode([GatewayConfig].self, from: data) {
+            gateways = decoded
+            KeychainService.save(key: gatewaysKey, data: data)
+            UserDefaults.standard.removeObject(forKey: gatewaysKey)
+            NSLog("[store] migrated gateway configs from UserDefaults to Keychain")
         }
         activeGatewayId = UserDefaults.standard.string(forKey: activeGatewayKey) ?? ""
     }
 
     func saveGateways() {
         if let data = try? JSONEncoder().encode(gateways) {
-            UserDefaults.standard.set(data, forKey: gatewaysKey)
+            KeychainService.save(key: gatewaysKey, data: data)
         }
     }
 
@@ -244,6 +266,16 @@ final class AppStore {
         isConnected = false
     }
 
+    // MARK: - Background Task Helper
+
+    private func withBackgroundTask<T>(name: String, _ body: () async throws -> T) async rethrows -> T {
+        let taskId = UIApplication.shared.beginBackgroundTask(withName: name) { }
+        defer {
+            if taskId != .invalid { UIApplication.shared.endBackgroundTask(taskId) }
+        }
+        return try await body()
+    }
+
     // MARK: - Send Message
 
     func sendMessage(sessionKey: String, agentId: String, text: String, imageData: Data? = nil, fileSize: Int64? = nil) async {
@@ -270,17 +302,19 @@ final class AppStore {
             return
         }
 
-        do {
-            var attachments: [[String: Any]]?
-            if let imageData {
-                attachments = [["type": "image", "mimeType": "image/jpeg", "content": imageData.base64EncodedString()]]
+        await withBackgroundTask(name: "sendMessage") {
+            do {
+                var attachments: [[String: Any]]?
+                if let imageData {
+                    attachments = [["type": "image", "mimeType": "image/jpeg", "content": imageData.base64EncodedString()]]
+                }
+                let msgText = text.isEmpty ? "请看图片" : text
+                try await gateway.sendChat(sessionKey: sessionKey, message: msgText, attachments: attachments)
+                updateMessageStatus(id: msgId, status: .sent)
+            } catch {
+                NSLog("[store] sendChat error: %@", "\(error)")
+                updateMessageStatus(id: msgId, status: .failed)
             }
-            let msgText = text.isEmpty ? "请看图片" : text
-            try await gateway.sendChat(sessionKey: sessionKey, message: msgText, attachments: attachments)
-            updateMessageStatus(id: msgId, status: .sent)
-        } catch {
-            NSLog("[store] sendChat error: %@", "\(error)")
-            updateMessageStatus(id: msgId, status: .failed)
         }
     }
 
@@ -297,17 +331,19 @@ final class AppStore {
             return
         }
 
-        do {
-            var attachments: [[String: Any]]?
-            if let imageData = current.localImageData {
-                attachments = [["type": "image", "mimeType": "image/jpeg", "content": imageData.base64EncodedString()]]
+        await withBackgroundTask(name: "retryMessage") {
+            do {
+                var attachments: [[String: Any]]?
+                if let imageData = current.localImageData {
+                    attachments = [["type": "image", "mimeType": "image/jpeg", "content": imageData.base64EncodedString()]]
+                }
+                let msgText = current.text.isEmpty ? "请看图片" : current.text
+                try await gateway.sendChat(sessionKey: current.sessionKey, message: msgText, attachments: attachments)
+                updateMessageStatus(id: current.id, status: .sent)
+            } catch {
+                NSLog("[store] retry sendChat error: %@", "\(error)")
+                updateMessageStatus(id: current.id, status: .failed)
             }
-            let msgText = current.text.isEmpty ? "请看图片" : current.text
-            try await gateway.sendChat(sessionKey: current.sessionKey, message: msgText, attachments: attachments)
-            updateMessageStatus(id: current.id, status: .sent)
-        } catch {
-            NSLog("[store] retry sendChat error: %@", "\(error)")
-            updateMessageStatus(id: current.id, status: .failed)
         }
     }
 
@@ -373,6 +409,53 @@ final class AppStore {
         if let i = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations[i].loadedSessionCount = nextIndex + 1
             if nextIndex + 1 >= keys.count { conversations[i].fullyLoaded = true }
+        }
+        updateConversationPreviews()
+    }
+
+    // MARK: - Scene Phase & Sync
+
+    func handleScenePhase(_ phase: ScenePhase) {
+        switch phase {
+        case .background, .inactive:
+            if backgroundedAt == nil { backgroundedAt = Date() }
+        case .active:
+            let offlineAt = backgroundedAt
+            backgroundedAt = nil
+            guard !isMockMode else { return }
+
+            if !gateway.isConnected {
+                // Disconnected while in background — reconnect (triggers full sync)
+                if let active = gateways.first(where: { $0.id == activeGatewayId }) {
+                    Task { await connect(to: active) }
+                }
+            } else if let offlineAt {
+                // Still connected — do incremental sync for the gap
+                let minutes = max(1, Int(Date().timeIntervalSince(offlineAt) / 60) + 1)
+                Task { await syncMessages(activeMinutes: minutes) }
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    func syncMessages(activeMinutes: Int) async {
+        guard isConnected, !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+
+        NSLog("[sync] incremental sync, activeMinutes=%d", activeMinutes)
+        guard let result = try? await gateway.listSessions(limit: 1000, activeMinutes: activeMinutes),
+              let sessions = result["sessions"] as? [[String: Any]] else { return }
+
+        let activeKeys = sessions.compactMap { $0["key"] as? String }
+        NSLog("[sync] %d sessions active in last %d min", activeKeys.count, activeMinutes)
+
+        for key in activeKeys {
+            let agentId = MessageService.agentIdFromSessionKey(key) ?? "main"
+            if let hist = try? await gateway.chatHistory(sessionKey: key, limit: 200) {
+                messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
+            }
         }
         updateConversationPreviews()
     }

@@ -135,7 +135,7 @@ enum MessageSendStatus: Equatable {
 }
 
 struct ChatMessage: Identifiable, Equatable {
-    let id: String
+    var id: String
     let sessionKey: String
     let agentId: String
     let role: MessageRole

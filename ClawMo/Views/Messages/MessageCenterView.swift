@@ -78,6 +78,8 @@ struct MessageCenterView: View {
 
     var conversationList: some View {
         VStack(spacing: 0) {
+            ConnectionBanner()
+
             // Section picker
             HStack(spacing: 0) {
                 ForEach(ConversationSection.allCases, id: \.self) { section in

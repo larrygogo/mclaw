@@ -16,15 +16,28 @@ private func base64URLEncode(_ data: Data) -> String {
         .replacingOccurrences(of: "=", with: "")
 }
 
-private let identityKey = "clawmo-identity"
+private let identityKeychainKey = "device-identity"
+private let identityLegacyKey = "clawmo-identity"
 
 private func getOrCreateIdentity() throws -> (DeviceIdentity, Curve25519.Signing.PrivateKey) {
-    if let data = UserDefaults.standard.data(forKey: identityKey),
+    // Try Keychain first
+    if let data = KeychainService.load(key: identityKeychainKey),
        let stored = try? JSONDecoder().decode(DeviceIdentity.self, from: data),
        let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: stored.privateKeyData) {
         return (stored, privateKey)
     }
 
+    // Migrate from UserDefaults if exists
+    if let data = UserDefaults.standard.data(forKey: identityLegacyKey),
+       let stored = try? JSONDecoder().decode(DeviceIdentity.self, from: data),
+       let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: stored.privateKeyData) {
+        KeychainService.save(key: identityKeychainKey, data: data)
+        UserDefaults.standard.removeObject(forKey: identityLegacyKey)
+        NSLog("[identity] migrated device key from UserDefaults to Keychain")
+        return (stored, privateKey)
+    }
+
+    // Create new identity
     let privateKey = Curve25519.Signing.PrivateKey()
     let publicKey = privateKey.publicKey
     let rawPublicBytes = publicKey.rawRepresentation
@@ -39,7 +52,7 @@ private func getOrCreateIdentity() throws -> (DeviceIdentity, Curve25519.Signing
         publicKeyRaw: publicKeyRaw
     )
     if let encoded = try? JSONEncoder().encode(identity) {
-        UserDefaults.standard.set(encoded, forKey: identityKey)
+        KeychainService.save(key: identityKeychainKey, data: encoded)
     }
     return (identity, privateKey)
 }
@@ -78,6 +91,7 @@ final class GatewayClient {
     private var eventHandlers: [EventHandler] = []
     private var suppressReconnect = false
     private var reconnectTask: Task<Void, Never>?
+    private var pingTask: Task<Void, Never>?
     private var helloSnapshot: [String: Any]?
     private var identity: DeviceIdentity?
     private var privateKey: Curve25519.Signing.PrivateKey?
@@ -119,14 +133,17 @@ final class GatewayClient {
             }
         }
 
-        // Start normal message loop after connected
+        // Start normal message loop and keepalive after connected
         startReceiving()
+        startPing()
     }
 
     func disconnect() {
         suppressReconnect = true
         reconnectTask?.cancel()
         reconnectTask = nil
+        pingTask?.cancel()
+        pingTask = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         urlSession = nil
@@ -188,9 +205,10 @@ final class GatewayClient {
         try await request(method: "chat.history", params: ["sessionKey": sessionKey, "limit": limit])
     }
 
-    func listSessions(agentId: String? = nil, limit: Int = 50) async throws -> [String: Any] {
+    func listSessions(agentId: String? = nil, limit: Int = 50, activeMinutes: Int? = nil) async throws -> [String: Any] {
         var params: [String: Any] = ["limit": limit]
         if let agentId { params["agentId"] = agentId }
+        if let activeMinutes { params["activeMinutes"] = activeMinutes }
         return try await request(method: "sessions.list", params: params)
     }
 
@@ -372,6 +390,33 @@ final class GatewayClient {
             return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         @unknown default:
             return nil
+        }
+    }
+
+    private func startPing() {
+        pingTask?.cancel()
+        pingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard let self, self.isConnected, let ws = self.webSocketTask else { return }
+
+                let pongOk = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                    ws.sendPing { error in
+                        cont.resume(returning: error == nil)
+                    }
+                }
+
+                if !pongOk {
+                    NSLog("[GW] ping/pong failed — treating as disconnected")
+                    self.isConnected = false
+                    for (_, cont) in self.pendingRequests {
+                        cont.resume(throwing: GatewayClientError.disconnected)
+                    }
+                    self.pendingRequests.removeAll()
+                    if !self.suppressReconnect { self.scheduleReconnect() }
+                    return
+                }
+            }
         }
     }
 
