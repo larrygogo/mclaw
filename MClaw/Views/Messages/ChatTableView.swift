@@ -31,6 +31,9 @@ struct ChatTableView: UIViewRepresentable {
         tv.dataSource = context.coordinator
         tv.delegate = context.coordinator
         tv.register(UITableViewCell.self, forCellReuseIdentifier: "msg")
+        // In flipped table, headerView = visual bottom spacing
+        let spacer = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: 16))
+        tv.tableHeaderView = spacer
         context.coordinator.tableView = tv
         context.coordinator.savedOffset = savedOffset
 

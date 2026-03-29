@@ -20,7 +20,7 @@ struct MessageBubble: View {
     private var hasText: Bool { !textOnly.isEmpty }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             if isUser {
                 Spacer(minLength: 50)
             } else {
