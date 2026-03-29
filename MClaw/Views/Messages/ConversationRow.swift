@@ -2,10 +2,28 @@ import SwiftUI
 
 struct ConversationRow: View {
     let conversation: Conversation
+    @Environment(AppStore.self) var store
+
+    private var latestMessage: ChatMessage? {
+        let keys = Set(conversation.allSessionKeys)
+        return store.messages
+            .filter { keys.contains($0.sessionKey) && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .max { $0.timestamp < $1.timestamp }
+    }
+
+    var previewText: String {
+        if let msg = latestMessage {
+            if msg.localImageData != nil { return "[图片]" }
+            let trimmed = msg.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return String(trimmed.prefix(60))
+        }
+        return conversation.historyLoaded ? "暂无消息" : "加载中..."
+    }
 
     var timeString: String {
-        guard conversation.lastTimestamp > .distantPast else { return "" }
-        return formatRowTime(conversation.lastTimestamp)
+        let ts = latestMessage?.timestamp ?? conversation.lastTimestamp
+        guard ts > .distantPast else { return "" }
+        return formatRowTime(ts)
     }
 
     var body: some View {
@@ -67,10 +85,7 @@ struct ConversationRow: View {
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.3))
                 }
-                let _ = { NSLog("[row] name=%@ text='%@' len=%d", conversation.displayName, conversation.lastMessageText, conversation.lastMessageText.count) }()
-                Text(conversation.lastMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                     ? (conversation.historyLoaded ? "暂无消息" : "加载中...")
-                     : conversation.lastMessageText)
+                Text(previewText)
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.4))
                     .lineLimit(1)

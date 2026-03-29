@@ -84,10 +84,12 @@ struct MessageCenterView: View {
             if displayedConversations.isEmpty {
                 emptyView
             } else {
+                // Access store.messages.count to ensure re-render when messages load
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         ForEach(displayedConversations) { conv in
                             ConversationRow(conversation: conv)
+                                .id("\(conv.id)-\(store.messages.count)")
                                 .onTapGesture { selectedConversation = conv }
                             Rectangle()
                                 .fill(Color.white.opacity(0.04))

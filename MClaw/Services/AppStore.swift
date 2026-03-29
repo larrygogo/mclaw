@@ -4,7 +4,7 @@ import SwiftData
 private let gatewaysKey = "mclaw-gateways"
 private let activeGatewayKey = "mclaw-active-gateway"
 
-@Observable
+@MainActor @Observable
 final class AppStore {
 
     // MARK: - State
@@ -44,7 +44,6 @@ final class AppStore {
 
     // MARK: - Cache
 
-    @MainActor
     func loadCachedMessages() {
         messages = persistence.loadCachedMessages(gatewayId: activeGatewayId)
     }
@@ -92,7 +91,7 @@ final class AppStore {
         messageService.isFullyMounted(for: conversation)
     }
 
-    @MainActor func updateConversationPreview(for msg: ChatMessage) {
+    func updateConversationPreview(for msg: ChatMessage) {
         let text = msg.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || msg.localImageData != nil else { return }
         guard let i = conversations.firstIndex(where: { $0.allSessionKeys.contains(msg.sessionKey) }) else { return }
@@ -103,7 +102,7 @@ final class AppStore {
         }
     }
 
-    @MainActor func updateConversationPreviews() {
+    func updateConversationPreviews() {
         var updated = conversations
         for i in updated.indices {
             let keys = Set(updated[i].allSessionKeys)
