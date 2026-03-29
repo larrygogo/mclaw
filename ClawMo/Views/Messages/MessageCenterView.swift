@@ -113,14 +113,14 @@ struct MessageCenterView: View {
                 .fill(Color.white.opacity(0.06))
                 .frame(height: 1)
 
-            if displayedConversations.isEmpty {
+            if displayedConversations.isEmpty && !hasHiddenConversations {
                 emptyView
             } else {
                 List {
                     ForEach(displayedConversations) { conv in
                         ConversationRow(conversation: conv)
                             .onTapGesture { selectedConversation = conv }
-                            .swipeActions(edge: .trailing) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button {
                                     withAnimation { store.hideConversation(conv.id) }
                                 } label: {
