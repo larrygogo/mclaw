@@ -75,6 +75,7 @@ struct ConversationDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(mcBg)
+        .toolbar(.hidden, for: .tabBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
