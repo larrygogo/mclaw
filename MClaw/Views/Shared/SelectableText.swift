@@ -71,6 +71,7 @@ struct SelectableText: UIViewRepresentable {
 
     class Coordinator: NSObject {
         weak var textView: UITextView?
+        private var dismissTap: UITapGestureRecognizer?
 
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began, let tv = textView else { return }
@@ -78,18 +79,34 @@ struct SelectableText: UIViewRepresentable {
             tv.isUserInteractionEnabled = true
             tv.becomeFirstResponder()
             tv.selectAll(nil)
-
-            // Listen for tap outside to dismiss
-            NotificationCenter.default.addObserver(self, selector: #selector(dismissSelection),
-                                                   name: UIMenuController.willHideMenuNotification, object: nil)
+            addDismissTap()
         }
 
-        @objc func dismissSelection() {
+        private func addDismissTap() {
+            guard let window = textView?.window, dismissTap == nil else { return }
+            let tap = UITapGestureRecognizer(target: self, action: #selector(handleOutsideTap(_:)))
+            tap.cancelsTouchesInView = false
+            window.addGestureRecognizer(tap)
+            dismissTap = tap
+        }
+
+        @objc func handleOutsideTap(_ gesture: UITapGestureRecognizer) {
+            guard let tv = textView else { return }
+            let location = gesture.location(in: tv)
+            if !tv.bounds.contains(location) {
+                dismissSelection()
+            }
+        }
+
+        func dismissSelection() {
             guard let tv = textView else { return }
             tv.selectedTextRange = nil
             tv.isSelectable = false
             tv.resignFirstResponder()
-            NotificationCenter.default.removeObserver(self, name: UIMenuController.willHideMenuNotification, object: nil)
+            if let tap = dismissTap {
+                tap.view?.removeGestureRecognizer(tap)
+                dismissTap = nil
+            }
         }
     }
 }
