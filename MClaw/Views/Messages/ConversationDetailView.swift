@@ -137,6 +137,9 @@ struct ConversationDetailView: View {
                 .font(.system(size: 15))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 20).fill(Color.white.opacity(0.06)))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .padding(.horizontal, 10)
 
             // Toolbar row
             HStack(spacing: 8) {
