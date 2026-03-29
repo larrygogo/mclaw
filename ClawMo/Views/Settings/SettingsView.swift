@@ -45,9 +45,9 @@ struct SettingsView: View {
                                     }
                                     .tint(mcGreen)
                                 }
-                                .listRowBackground(Color.white.opacity(0.04))
-                                .listRowSeparatorTint(.white.opacity(0.04))
-                                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
                             }
                         }
                         .listStyle(.plain)
@@ -270,8 +270,11 @@ struct GatewayRow: View {
 
             Spacer()
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 14)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.radiusM)
+                .fill(Color(red: 18/255, green: 20/255, blue: 22/255))
+        )
     }
 }
 
