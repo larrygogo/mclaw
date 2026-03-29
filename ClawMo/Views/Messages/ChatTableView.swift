@@ -132,14 +132,6 @@ struct ChatTableView: UIViewRepresentable {
 
             cell.contentConfiguration = UIHostingConfiguration {
                 VStack(spacing: 0) {
-                    MessageBubble(
-                        message: msg,
-                        agentAvatar: parent.agentAvatar,
-                        agentId: parent.conversation?.agentId,
-                        senderName: senderName,
-                        onRetry: msg.sendStatus == .failed ? { [weak self] in self?.parent.onRetry?(msg) } : nil
-                    )
-                    // In flipped table: below message = visually above
                     if let dateLabel {
                         Text(dateLabel)
                             .font(.system(size: 11, design: .monospaced))
@@ -147,6 +139,13 @@ struct ChatTableView: UIViewRepresentable {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                     }
+                    MessageBubble(
+                        message: msg,
+                        agentAvatar: parent.agentAvatar,
+                        agentId: parent.conversation?.agentId,
+                        senderName: senderName,
+                        onRetry: msg.sendStatus == .failed ? { [weak self] in self?.parent.onRetry?(msg) } : nil
+                    )
                 }
             }
             .margins(.horizontal, 14)
