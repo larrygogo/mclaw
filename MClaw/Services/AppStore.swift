@@ -26,6 +26,7 @@ final class AppStore {
     var conversations: [Conversation] = []
     var mountedCounts: [String: Int] = [:]
     var scrollPositions: [String: String] = [:]
+    var draftTexts: [String: String] = [:]           // conversationId → draft input text
 
     let gateway = GatewayClient()
     let persistence: PersistenceService

@@ -7,7 +7,6 @@ private let mcBg = Theme.bg
 struct ConversationDetailView: View {
     let conversation: Conversation
     @Environment(AppStore.self) var store
-    @State private var inputText = ""
     @State private var isSending = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var pendingImageData: Data?
@@ -15,6 +14,15 @@ struct ConversationDetailView: View {
     @State private var showCamera = false
     @State private var showFilePicker = false
     @FocusState private var isInputFocused: Bool
+
+    private var inputText: Binding<String> {
+        Binding(
+            get: { store.draftTexts[conversation.id] ?? "" },
+            set: { store.draftTexts[conversation.id] = $0 }
+        )
+    }
+
+    private var inputTextValue: String { store.draftTexts[conversation.id] ?? "" }
 
     var messages: [ChatMessage] {
         store.mountedMessages(for: conversation)
@@ -130,20 +138,22 @@ struct ConversationDetailView: View {
                 .padding(.top, 10)
             }
 
-            if isExpanded {
-                TextField("发消息...", text: $inputText, axis: .vertical)
-                    .focused($isInputFocused)
-                    .lineLimit(1...6)
-                    .font(.system(size: 15))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .onAppear { isInputFocused = true }
-                    .onChange(of: isInputFocused) {
-                        if !isInputFocused && inputText.isEmpty && pendingImageData == nil {
-                            inputExpanded = false
-                        }
+            // TextField always exists (pre-loaded for instant focus)
+            TextField("发消息...", text: inputText, axis: .vertical)
+                .focused($isInputFocused)
+                .lineLimit(1...6)
+                .font(.system(size: 15))
+                .padding(.horizontal, 16)
+                .padding(.vertical, isExpanded ? 10 : 0)
+                .frame(height: isExpanded ? nil : 0)
+                .clipped()
+                .onChange(of: isInputFocused) {
+                    if !isInputFocused && inputTextValue.isEmpty && pendingImageData == nil {
+                        inputExpanded = false
                     }
+                }
 
+            if isExpanded {
                 HStack(spacing: 8) {
                     voiceButton
 
@@ -174,7 +184,12 @@ struct ConversationDetailView: View {
                 HStack(spacing: 8) {
                     voiceButton
 
-                    Button { inputExpanded = true } label: {
+                    Button {
+                        inputExpanded = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            isInputFocused = true
+                        }
+                    } label: {
                         Text("发消息...")
                             .font(.system(size: 15))
                             .foregroundStyle(.white.opacity(0.3))
@@ -249,7 +264,7 @@ struct ConversationDetailView: View {
             if speechManager.isRecording {
                 speechManager.stop()
                 if !speechManager.transcript.isEmpty {
-                    inputText += speechManager.transcript
+                    store.draftTexts[conversation.id, default: ""] += speechManager.transcript
                 }
             } else {
                 speechManager.start()
@@ -265,19 +280,19 @@ struct ConversationDetailView: View {
     @State private var inputExpanded = false
 
     private var isExpanded: Bool {
-        inputExpanded || !inputText.isEmpty || pendingImageData != nil
+        inputExpanded || !inputTextValue.isEmpty || pendingImageData != nil
     }
 
     var canSendNow: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImageData != nil
+        !inputTextValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImageData != nil
     }
 
     private func send() {
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = inputTextValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || pendingImageData != nil else { return }
 
         let imageData = pendingImageData.flatMap { compressImage($0, maxBytes: 4_500_000) }
-        inputText = ""
+        store.draftTexts[conversation.id] = ""
         pendingImageData = nil
         selectedPhoto = nil
         isSending = true
