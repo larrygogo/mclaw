@@ -33,6 +33,13 @@ struct MessageCenterView: View {
         showSection == .user ? userConversations : a2aConversations
     }
 
+    var hiddenCount: Int {
+        let current = showSection == .user ? ConversationKind.user : ConversationKind.a2a
+        return store.conversations.filter { $0.kind == current && store.hiddenConversationIds.contains($0.id) }.count
+    }
+
+    var hasHiddenConversations: Bool { hiddenCount > 0 }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -114,15 +121,39 @@ struct MessageCenterView: View {
                         ConversationRow(conversation: conv)
                             .onTapGesture { selectedConversation = conv }
                             .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
+                                Button {
                                     withAnimation { store.hideConversation(conv.id) }
                                 } label: {
-                                    Label("隐藏", systemImage: "eye.slash")
+                                    Image(systemName: "eye.slash")
                                 }
+                                .tint(.white.opacity(0.15))
                             }
                             .listRowBackground(mcBg)
                             .listRowSeparatorTint(.white.opacity(0.04))
                             .listRowInsets(EdgeInsets())
+                    }
+
+                    if hasHiddenConversations {
+                        Button {
+                            withAnimation {
+                                for id in store.hiddenConversationIds {
+                                    store.unhideConversation(id)
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "eye")
+                                    .font(.system(size: 12))
+                                Text("显示 \(hiddenCount) 个隐藏会话")
+                                    .font(.system(size: 12, design: .monospaced))
+                            }
+                            .foregroundStyle(.white.opacity(0.3))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                        }
+                        .listRowBackground(mcBg)
+                        .listRowSeparatorTint(.clear)
+                        .listRowInsets(EdgeInsets())
                     }
                 }
                 .listStyle(.plain)
