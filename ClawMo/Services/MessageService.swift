@@ -57,7 +57,9 @@ final class MessageService {
                && $0.sessionKey == msg.sessionKey && $0.role == msg.role && $0.text == msg.text
                && abs($0.timestamp.timeIntervalSince(msg.timestamp)) < 60
            }) {
+            let oldId = store.messages[localIdx].id
             store.messages[localIdx].id = msg.id
+            store.updatePersistedMessageId(oldId: oldId, newId: msg.id)
             return
         }
 
@@ -180,7 +182,9 @@ final class MessageService {
                 && $0.sessionKey == sessionKey && $0.role == msgRole && $0.text == text
                 && abs($0.timestamp.timeIntervalSince(ts)) < 60
             }) {
+                let oldId = store.messages[localIdx].id
                 store.messages[localIdx].id = msgId
+                store.updatePersistedMessageId(oldId: oldId, newId: msgId)
                 continue
             }
 

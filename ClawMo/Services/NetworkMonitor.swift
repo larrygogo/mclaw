@@ -11,15 +11,18 @@ final class NetworkMonitor {
 
     func start() {
         monitor.pathUpdateHandler = { [weak self] path in
+            let satisfied = path.status == .satisfied
+            let cellular = path.usesInterfaceType(.cellular)
             DispatchQueue.main.async {
-                let wasConnected = self?.isConnected ?? true
-                self?.isConnected = path.status == .satisfied
-                self?.isCellular = path.usesInterfaceType(.cellular)
+                guard let self else { return }
+                let wasConnected = self.isConnected
+                self.isConnected = satisfied
+                self.isCellular = cellular
 
-                if !wasConnected && path.status == .satisfied {
+                if !wasConnected && satisfied {
                     NSLog("[net] network restored")
                     NotificationCenter.default.post(name: .networkRestored, object: nil)
-                } else if wasConnected && path.status != .satisfied {
+                } else if wasConnected && !satisfied {
                     NSLog("[net] network lost")
                 }
             }

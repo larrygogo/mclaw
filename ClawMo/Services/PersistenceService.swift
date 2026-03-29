@@ -32,6 +32,18 @@ final class PersistenceService {
         try? context.save()
     }
 
+    @MainActor
+    func updateMessageId(oldId: String, newId: String) {
+        guard let container = modelContainer else { return }
+        let context = container.mainContext
+        let descriptor = FetchDescriptor<PersistedMessage>(
+            predicate: #Predicate { $0.stableId == oldId }
+        )
+        guard let msg = try? context.fetch(descriptor).first else { return }
+        msg.stableId = newId
+        try? context.save()
+    }
+
     func getCacheSize() -> String {
         guard let container = modelContainer else { return "0" }
         let context = container.mainContext

@@ -317,11 +317,13 @@ final class GatewayClient {
             return
         }
 
-        // Events
+        // Events — dispatch to main thread since handlers modify @MainActor state
         if type_ == "event", let event = dict["event"] as? String {
             let payload = dict["payload"] as? [String: Any] ?? [:]
-            for handler in eventHandlers {
-                handler(event, payload)
+            DispatchQueue.main.async { [eventHandlers] in
+                for handler in eventHandlers {
+                    handler(event, payload)
+                }
             }
         }
     }

@@ -97,6 +97,10 @@ final class AppStore {
         persistence.persistMessages(newMessages, gatewayId: activeGatewayId)
     }
 
+    func updatePersistedMessageId(oldId: String, newId: String) {
+        persistence.updateMessageId(oldId: oldId, newId: newId)
+    }
+
     // MARK: - Delegated to MessageService
 
     func mountedMessages(for conversation: Conversation) -> [ChatMessage] {
