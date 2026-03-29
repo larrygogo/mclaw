@@ -113,10 +113,16 @@ final class AppStore {
 
     func hideConversation(_ id: String) {
         hiddenConversationIds.insert(id)
+        Haptics.light()
     }
 
     func unhideConversation(_ id: String) {
         hiddenConversationIds.remove(id)
+    }
+
+    func unhideAll() {
+        hiddenConversationIds.removeAll()
+        Haptics.light()
     }
 
     // MARK: - Delegated to MessageService
@@ -246,6 +252,7 @@ final class AppStore {
             isConnected = true
             isPairingRequired = false
             isConnecting = false
+            Haptics.success()
 
             if let rawAgents = try? await gateway.listAgents() {
                 agentList = ConversationService.buildAgentList(rawAgents)
@@ -313,6 +320,7 @@ final class AppStore {
         msg.sendStatus = .sending
         messageService.addMessage(msg)
         messageService.updateAgent(agentId, status: .working, task: String(text.prefix(80)))
+        Haptics.light()
 
         if isMockMode {
             if text.lowercased().contains("fail") {
@@ -347,6 +355,7 @@ final class AppStore {
               messages[i].sendStatus == .failed else { return }
         let current = messages[i]
         messages[i].sendStatus = .sending
+        Haptics.medium()
 
         if isMockMode {
             updateMessageStatus(id: current.id, status: .sent)
@@ -371,7 +380,11 @@ final class AppStore {
 
     private func updateMessageStatus(id: String, status: MessageSendStatus) {
         if let i = messages.firstIndex(where: { $0.id == id }) {
+            let oldStatus = messages[i].sendStatus
             messages[i].sendStatus = status
+            // Haptic on status transitions
+            if oldStatus == .sending && status == .sent { Haptics.success() }
+            if status == .failed { Haptics.error() }
         }
     }
 

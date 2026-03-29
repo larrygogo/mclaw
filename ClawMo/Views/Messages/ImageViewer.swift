@@ -68,6 +68,7 @@ struct ImageViewer: View {
                     Spacer()
                     Button {
                         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                        Haptics.success()
                         showSaveToast = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSaveToast = false }
                     } label: {

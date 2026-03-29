@@ -93,6 +93,7 @@ struct MessageCenterView: View {
                 ForEach(ConversationSection.allCases, id: \.self) { section in
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) { showSection = section }
+                        Haptics.selection()
                     } label: {
                         VStack(spacing: 4) {
                             Text(section.rawValue)
@@ -135,11 +136,7 @@ struct MessageCenterView: View {
 
                     if hasHiddenConversations {
                         Button {
-                            withAnimation {
-                                for id in store.hiddenConversationIds {
-                                    store.unhideConversation(id)
-                                }
-                            }
+                            withAnimation { store.unhideAll() }
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "eye")
