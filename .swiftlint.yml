@@ -1,0 +1,50 @@
+# SwiftLint Configuration for ClawMo
+
+included:
+  - ClawMo
+
+excluded:
+  - ClawMo/Services/MockDataProvider.swift
+
+# Rules
+disabled_rules:
+  - trailing_comma
+  - identifier_name         # Allow short names like i, gw, ts
+  - type_body_length        # AppStore is large by design
+  - file_length             # Some files are naturally long
+  - function_body_length    # Some functions have complex logic
+  - cyclomatic_complexity
+
+opt_in_rules:
+  - closure_spacing
+  - contains_over_filter_count
+  - empty_count
+  - empty_string
+  - first_where
+  - force_unwrapping
+  - implicit_return
+  - last_where
+  - modifier_order
+  - overridden_super_call
+  - private_outlet
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - vertical_whitespace_closing_braces
+
+# Thresholds
+line_length:
+  warning: 150
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+type_name:
+  min_length: 2
+
+nesting:
+  type_level: 3
+  function_level: 3
+
+reporter: xcode
