@@ -8,8 +8,8 @@ struct ConversationDetailView: View {
     let conversation: Conversation
     @Environment(AppStore.self) var store
     @State private var isSending = false
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var pendingImageData: Data?
+    @State private var selectedPhotos: [PhotosPickerItem] = []
+    @State private var pendingImages: [Data] = []
     @State private var speechManager = SpeechManager()
     @State private var showCamera = false
     @State private var showFilePicker = false
@@ -117,24 +117,29 @@ struct ConversationDetailView: View {
 
     var messageInput: some View {
         VStack(spacing: 0) {
-            // Image preview
-            if let data = pendingImageData, let uiImage = UIImage(data: data) {
-                HStack(spacing: 8) {
-                    ZStack(alignment: .topTrailing) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 64, height: 64)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        Button { pendingImageData = nil; selectedPhoto = nil } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.white.opacity(0.8))
-                                .background(Circle().fill(Color.black.opacity(0.5)))
+            // Image previews
+            if !pendingImages.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(pendingImages.indices, id: \.self) { i in
+                            if let uiImage = UIImage(data: pendingImages[i]) {
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 64, height: 64)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    Button { pendingImages.remove(at: i) } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(.white.opacity(0.8))
+                                            .background(Circle().fill(Color.black.opacity(0.5)))
+                                    }
+                                    .offset(x: 4, y: -4)
+                                }
+                            }
                         }
-                        .offset(x: 4, y: -4)
                     }
-                    Spacer()
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
@@ -150,7 +155,7 @@ struct ConversationDetailView: View {
                 .frame(height: isExpanded ? nil : 0)
                 .clipped()
                 .onChange(of: isInputFocused) {
-                    if !isInputFocused && inputTextValue.isEmpty && pendingImageData == nil {
+                    if !isInputFocused && inputTextValue.isEmpty && pendingImages.isEmpty {
                         inputExpanded = false
                     }
                 }
@@ -211,16 +216,19 @@ struct ConversationDetailView: View {
         )
         .padding(.horizontal, 10)
         .padding(.bottom, 6)
-        .onChange(of: selectedPhoto) {
+        .onChange(of: selectedPhotos) {
             Task {
-                if let data = try? await selectedPhoto?.loadTransferable(type: Data.self) {
-                    pendingImageData = data
+                for item in selectedPhotos {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        pendingImages.append(data)
+                    }
                 }
+                selectedPhotos = []
             }
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { imageData in
-                pendingImageData = imageData
+                pendingImages.append(imageData)
             }
             .ignoresSafeArea()
         }
@@ -248,7 +256,7 @@ struct ConversationDetailView: View {
                 .frame(width: 32, height: 32)
         }
         .sheet(isPresented: $showAttachSheet) {
-            AttachmentSheet(selectedPhoto: $selectedPhoto, onCamera: {
+            AttachmentSheet(selectedPhotos: $selectedPhotos, onCamera: {
                 showAttachSheet = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { showCamera = true }
             }, onFile: {
@@ -282,25 +290,34 @@ struct ConversationDetailView: View {
     @State private var inputExpanded = false
 
     private var isExpanded: Bool {
-        inputExpanded || !inputTextValue.isEmpty || pendingImageData != nil
+        inputExpanded || !inputTextValue.isEmpty || !pendingImages.isEmpty
     }
 
     var canSendNow: Bool {
-        !inputTextValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImageData != nil
+        !inputTextValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pendingImages.isEmpty
     }
 
     private func send() {
         let text = inputTextValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty || pendingImageData != nil else { return }
+        guard !text.isEmpty || !pendingImages.isEmpty else { return }
 
-        let imageData = pendingImageData.flatMap { compressImage($0, maxBytes: 4_500_000) }
+        // Compress first image (gateway supports one attachment per message)
+        let imageData = pendingImages.first.flatMap { compressImage($0, maxBytes: 4_500_000) }
+        let extraImages = pendingImages.dropFirst().map { compressImage($0, maxBytes: 4_500_000) }
         store.draftTexts[conversation.id] = ""
-        pendingImageData = nil
-        selectedPhoto = nil
+        pendingImages = []
+        selectedPhotos = []
         isSending = true
         store.scrollPositions[conversation.id] = nil
         Task {
+            // Send first image with text
             await store.sendMessage(sessionKey: conversation.sessionKey, agentId: conversation.agentId, text: text, imageData: imageData)
+            // Send remaining images as separate messages
+            for extra in extraImages {
+                if let data = extra {
+                    await store.sendMessage(sessionKey: conversation.sessionKey, agentId: conversation.agentId, text: "", imageData: data)
+                }
+            }
             isSending = false
         }
     }

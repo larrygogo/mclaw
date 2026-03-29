@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct AttachmentSheet: View {
-    @Binding var selectedPhoto: PhotosPickerItem?
+    @Binding var selectedPhotos: [PhotosPickerItem]
     var onCamera: () -> Void
     var onFile: () -> Void
     @Environment(\.dismiss) var dismiss
@@ -12,10 +12,10 @@ struct AttachmentSheet: View {
     var body: some View {
         VStack(spacing: 24) {
             LazyVGrid(columns: columns, spacing: 16) {
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                PhotosPicker(selection: $selectedPhotos, matching: .images) {
                     attachItem(icon: "photo", label: "照片")
                 }
-                .onChange(of: selectedPhoto) { dismiss() }
+                .onChange(of: selectedPhotos) { dismiss() }
 
                 Button { onCamera() } label: {
                     attachItem(icon: "camera", label: "拍照")
