@@ -137,6 +137,12 @@ struct ConversationDetailView: View {
                     .font(.system(size: 15))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
+                    .onAppear { isInputFocused = true }
+                    .onChange(of: isInputFocused) {
+                        if !isInputFocused && inputText.isEmpty && pendingImageData == nil {
+                            inputExpanded = false
+                        }
+                    }
 
                 HStack(spacing: 8) {
                     voiceButton
@@ -168,7 +174,7 @@ struct ConversationDetailView: View {
                 HStack(spacing: 8) {
                     voiceButton
 
-                    Button { isInputFocused = true } label: {
+                    Button { inputExpanded = true } label: {
                         Text("发消息...")
                             .font(.system(size: 15))
                             .foregroundStyle(.white.opacity(0.3))
@@ -256,8 +262,10 @@ struct ConversationDetailView: View {
         }
     }
 
+    @State private var inputExpanded = false
+
     private var isExpanded: Bool {
-        isInputFocused || !inputText.isEmpty || pendingImageData != nil
+        inputExpanded || !inputText.isEmpty || pendingImageData != nil
     }
 
     var canSendNow: Bool {
