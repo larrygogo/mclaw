@@ -78,6 +78,17 @@ struct ConversationDetailView: View {
                 )
             }
 
+            if let streaming = streamingText, !streaming.isEmpty {
+                StreamingBubble(
+                    text: streaming,
+                    avatar: conversation.kind == .a2a ? conversation.secondaryAvatar : conversation.avatar,
+                    agentId: conversation.agentId
+                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .transition(.opacity)
+            }
+
             if canSend {
                 messageInput
             }
