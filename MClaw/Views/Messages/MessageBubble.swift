@@ -56,10 +56,33 @@ struct MessageBubble: View {
                         .onTapGesture { fullscreenImage = uiImage }
                 }
 
-                Text(timeString)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.25))
-                    .padding(.horizontal, 4)
+                HStack(spacing: 4) {
+                    Text(timeString)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.25))
+
+                    if let status = message.sendStatus {
+                        switch status {
+                        case .sending:
+                            ProgressView()
+                                .controlSize(.mini)
+                                .tint(.white.opacity(0.3))
+                        case .sent:
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.white.opacity(0.3))
+                        case .failed:
+                            Button {
+                                // TODO: retry
+                            } label: {
+                                Image(systemName: "exclamationmark.circle")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.red.opacity(0.7))
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
             }
 
             if !isUser {

@@ -124,7 +124,10 @@ struct MessageListView: View {
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
         didInitialScroll = true
-        proxy.scrollTo("__bottom__")
+        // Defer to next run loop to ensure VStack layout is complete
+        DispatchQueue.main.async {
+            proxy.scrollTo("__bottom__")
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             readyForLoadMore = true
         }

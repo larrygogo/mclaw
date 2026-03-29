@@ -228,17 +228,20 @@ final class AppStore {
     // MARK: - Send Message
 
     func sendMessage(sessionKey: String, agentId: String, text: String, imageData: Data? = nil) async {
+        let msgId = "local-\(Date().timeIntervalSince1970)"
         var msg = ChatMessage(
-            id: "local-\(Date().timeIntervalSince1970)",
+            id: msgId,
             sessionKey: sessionKey, agentId: agentId,
             role: .user, text: text.isEmpty && imageData != nil ? "" : text,
             timestamp: Date(), runId: nil
         )
         msg.localImageData = imageData
+        msg.sendStatus = .sending
         messageService.addMessage(msg)
         messageService.updateAgent(agentId, status: .working, task: String(text.prefix(80)))
 
         if isMockMode {
+            updateMessageStatus(id: msgId, status: .sent)
             mockAgentReply(sessionKey: sessionKey, agentId: agentId, userText: text)
             return
         }
@@ -250,8 +253,16 @@ final class AppStore {
             }
             let msgText = text.isEmpty ? "请看图片" : text
             try await gateway.sendChat(sessionKey: sessionKey, message: msgText, attachments: attachments)
+            updateMessageStatus(id: msgId, status: .sent)
         } catch {
             NSLog("[store] sendChat error: %@", "\(error)")
+            updateMessageStatus(id: msgId, status: .failed)
+        }
+    }
+
+    private func updateMessageStatus(id: String, status: MessageSendStatus) {
+        if let i = messages.firstIndex(where: { $0.id == id }) {
+            messages[i].sendStatus = status
         }
     }
 

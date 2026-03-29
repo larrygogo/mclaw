@@ -66,6 +66,12 @@ struct Conversation: Identifiable, Hashable {
 
 // MARK: - Message
 
+enum MessageSendStatus: Equatable {
+    case sent       // delivered to gateway
+    case sending    // in flight
+    case failed     // send failed
+}
+
 struct ChatMessage: Identifiable, Equatable {
     let id: String
     let sessionKey: String
@@ -74,7 +80,8 @@ struct ChatMessage: Identifiable, Equatable {
     let text: String
     let timestamp: Date
     let runId: String?
-    var localImageData: Data? = nil  // for locally sent images
+    var localImageData: Data? = nil
+    var sendStatus: MessageSendStatus? = nil  // nil = received from server
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
         lhs.id == rhs.id
