@@ -253,8 +253,12 @@ final class AppStore {
         messageService.updateAgent(agentId, status: .working, task: String(text.prefix(80)))
 
         if isMockMode {
-            updateMessageStatus(id: msgId, status: .sent)
-            mockAgentReply(sessionKey: sessionKey, agentId: agentId, userText: text)
+            if text.lowercased().contains("fail") {
+                updateMessageStatus(id: msgId, status: .failed)
+            } else {
+                updateMessageStatus(id: msgId, status: .sent)
+                mockAgentReply(sessionKey: sessionKey, agentId: agentId, userText: text)
+            }
             return
         }
 
