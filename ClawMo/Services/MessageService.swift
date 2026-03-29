@@ -136,7 +136,8 @@ final class MessageService {
         guard !text.isEmpty else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.contains("HEARTBEAT") else { return }
-        if message["provenance"] != nil { return }
+        // Only filter provenance for user sessions; A2A (subagent) sessions need provenance messages
+        if message["provenance"] != nil && !sessionKey.contains(":subagent:") { return }
 
         let openclawId = (message["__openclaw"] as? [String: Any])?["id"] as? String
         let msgId = openclawId ?? runId ?? "chat-\(sessionKey)-\(Int(ts.timeIntervalSince1970 * 1000))"
@@ -183,7 +184,7 @@ final class MessageService {
             guard !text.isEmpty else { continue }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.contains("HEARTBEAT") else { continue }
-            if m["provenance"] != nil { continue }
+            if m["provenance"] != nil && !sessionKey.contains(":subagent:") { continue }
 
             let openclaw = m["__openclaw"] as? [String: Any]
             let msgId = openclaw?["id"] as? String
