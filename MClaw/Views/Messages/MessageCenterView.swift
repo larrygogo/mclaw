@@ -51,6 +51,9 @@ struct MessageCenterView: View {
             .navigationDestination(item: $selectedConversation) { conv in
                 ConversationDetailView(conversation: conv)
             }
+            .onChange(of: store.activeGatewayId) {
+                selectedConversation = nil
+            }
         }
     }
 
