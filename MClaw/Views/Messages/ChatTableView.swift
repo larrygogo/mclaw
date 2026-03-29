@@ -143,6 +143,10 @@ struct ChatTableView: UIViewRepresentable {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
 
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+
         // MARK: - Delegate (load more)
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
