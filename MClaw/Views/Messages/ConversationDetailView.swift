@@ -130,45 +130,62 @@ struct ConversationDetailView: View {
                 .padding(.top, 10)
             }
 
-            // Text field
-            TextField("发消息...", text: $inputText, axis: .vertical)
-                .focused($isInputFocused)
-                .lineLimit(1...6)
-                .font(.system(size: 15))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: 20).fill(Color.white.opacity(0.06)))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.08), lineWidth: 1))
-                .padding(.horizontal, 10)
+            if isExpanded {
+                // Expanded: TextField on top, toolbar below
+                TextField("发消息...", text: $inputText, axis: .vertical)
+                    .focused($isInputFocused)
+                    .lineLimit(1...6)
+                    .font(.system(size: 15))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
 
-            // Toolbar row
-            HStack(spacing: 8) {
-                voiceButton
+                HStack(spacing: 8) {
+                    voiceButton
 
-                if speechManager.isRecording {
-                    Text(speechManager.transcript.isEmpty ? "正在听..." : speechManager.transcript)
-                        .font(.system(size: 12))
-                        .foregroundStyle(mcGreen.opacity(0.6))
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                plusMenu
-
-                if canSendNow {
-                    Button { send() } label: {
-                        Image(systemName: isSending ? "ellipsis" : "arrow.up.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(mcGreen)
-                            .frame(width: 32, height: 32)
+                    if speechManager.isRecording {
+                        Text(speechManager.transcript.isEmpty ? "正在听..." : speechManager.transcript)
+                            .font(.system(size: 12))
+                            .foregroundStyle(mcGreen.opacity(0.6))
+                            .lineLimit(1)
                     }
-                    .disabled(isSending)
+
+                    Spacer()
+
+                    plusMenu
+
+                    if canSendNow {
+                        Button { send() } label: {
+                            Image(systemName: isSending ? "ellipsis" : "arrow.up.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(mcGreen)
+                                .frame(width: 32, height: 32)
+                        }
+                        .disabled(isSending)
+                    }
                 }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            } else {
+                // Collapsed: [mic] [TextField] [+]
+                HStack(spacing: 8) {
+                    voiceButton
+
+                    TextField("发消息...", text: $inputText, axis: .vertical)
+                        .focused($isInputFocused)
+                        .lineLimit(1...3)
+                        .font(.system(size: 15))
+
+                    plusMenu
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
         }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(0.06))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        )
         .padding(.horizontal, 10)
         .padding(.bottom, 6)
         .onChange(of: selectedPhoto) {
@@ -237,6 +254,10 @@ struct ConversationDetailView: View {
                 .foregroundStyle(speechManager.isRecording ? mcGreen : .white.opacity(0.4))
                 .frame(width: 32, height: 32)
         }
+    }
+
+    private var isExpanded: Bool {
+        isInputFocused || !inputText.isEmpty || pendingImageData != nil
     }
 
     var canSendNow: Bool {
