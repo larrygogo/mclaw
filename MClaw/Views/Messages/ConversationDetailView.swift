@@ -58,7 +58,7 @@ struct ConversationDetailView: View {
                 MessageListView(
                     messages: messages,
                     streamingText: streamingText,
-                    agentAvatar: conversation.avatar,
+                    agentAvatar: conversation.kind == .a2a ? conversation.secondaryAvatar : conversation.avatar,
                     fullyMounted: fullyMounted,
                     onMountMore: { store.mountMore(for: liveConversation) },
                     conversation: conversation
