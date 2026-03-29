@@ -105,7 +105,11 @@ final class AppStore {
     func updateConversationPreviews() {
         for i in conversations.indices {
             let keys = Set(conversations[i].allSessionKeys)
-            if let last = messages.filter({ keys.contains($0.sessionKey) }).max(by: { $0.timestamp < $1.timestamp }) {
+            let matched = messages.filter { keys.contains($0.sessionKey) }
+            // Find latest message with actual displayable content
+            if let last = matched
+                .filter({ !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.localImageData != nil })
+                .max(by: { $0.timestamp < $1.timestamp }) {
                 let preview = last.localImageData != nil ? "[图片]" : String(last.text.prefix(60))
                 conversations[i].lastMessageText = preview
                 conversations[i].lastTimestamp = last.timestamp
