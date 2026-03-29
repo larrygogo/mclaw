@@ -20,12 +20,12 @@ struct MessageCenterView: View {
     }
 
     var userConversations: [Conversation] {
-        store.conversations.filter { $0.kind == .user }
+        store.conversations.filter { $0.kind == .user && !store.hiddenConversationIds.contains($0.id) }
                            .sorted { $0.lastTimestamp > $1.lastTimestamp }
     }
 
     var a2aConversations: [Conversation] {
-        store.conversations.filter { $0.kind == .a2a }
+        store.conversations.filter { $0.kind == .a2a && !store.hiddenConversationIds.contains($0.id) }
                            .sorted { $0.lastTimestamp > $1.lastTimestamp }
     }
 
@@ -62,14 +62,15 @@ struct MessageCenterView: View {
                     } else if let agent = store.pendingAgent {
                         store.pendingAgent = nil
                         let sk = "agent:\(agent.id):main"
-                        let conv = Conversation(
+                        var conv = Conversation(
                             id: id, sessionKey: sk, sessionKeys: [sk],
                             agentId: agent.id, displayName: agent.name,
                             avatar: agent.avatar, color: agent.color,
-                            kind: .user, historyLoaded: true, fullyLoaded: true
+                            kind: .user
                         )
                         store.conversations.append(conv)
                         selectedConversation = conv
+                        Task { await store.fetchAllSessions(for: conv) }
                     }
                 }
             }
@@ -108,19 +109,24 @@ struct MessageCenterView: View {
             if displayedConversations.isEmpty {
                 emptyView
             } else {
-                // Access store.messages.count to ensure re-render when messages load
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(displayedConversations) { conv in
-                            ConversationRow(conversation: conv)
-                                .onTapGesture { selectedConversation = conv }
-                            Rectangle()
-                                .fill(Color.white.opacity(0.04))
-                                .frame(height: 1)
-                                .padding(.leading, 72)
-                        }
+                List {
+                    ForEach(displayedConversations) { conv in
+                        ConversationRow(conversation: conv)
+                            .onTapGesture { selectedConversation = conv }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    withAnimation { store.hideConversation(conv.id) }
+                                } label: {
+                                    Label("隐藏", systemImage: "eye.slash")
+                                }
+                            }
+                            .listRowBackground(mcBg)
+                            .listRowSeparatorTint(.white.opacity(0.04))
+                            .listRowInsets(EdgeInsets())
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
     }

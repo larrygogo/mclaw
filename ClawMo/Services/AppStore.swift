@@ -30,6 +30,13 @@ final class AppStore {
     var scrollOffsets: [String: CGFloat] = [:]    // conversationId → UITableView contentOffset.y
     var draftTexts: [String: String] = [:]           // conversationId → draft input text
 
+    // Hidden conversations
+    var hiddenConversationIds: Set<String> = [] {
+        didSet {
+            UserDefaults.standard.set(Array(hiddenConversationIds), forKey: "clawmo-hidden-conversations")
+        }
+    }
+
     // Sync
     var backgroundedAt: Date?
     private var isSyncing = false
@@ -50,6 +57,9 @@ final class AppStore {
     init(modelContainer: ModelContainer? = nil) {
         self.persistence = PersistenceService(modelContainer: modelContainer)
         loadGateways()
+        if let hidden = UserDefaults.standard.array(forKey: "clawmo-hidden-conversations") as? [String] {
+            hiddenConversationIds = Set(hidden)
+        }
         self.messageService = MessageService(store: self)
         gateway.onEvent { [weak self] event, payload in
             self?.handleEvent(event, payload: payload)
@@ -99,6 +109,14 @@ final class AppStore {
 
     func updatePersistedMessageId(oldId: String, newId: String) {
         persistence.updateMessageId(oldId: oldId, newId: newId)
+    }
+
+    func hideConversation(_ id: String) {
+        hiddenConversationIds.insert(id)
+    }
+
+    func unhideConversation(_ id: String) {
+        hiddenConversationIds.remove(id)
     }
 
     // MARK: - Delegated to MessageService

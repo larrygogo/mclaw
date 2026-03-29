@@ -351,6 +351,7 @@ struct GatewayEditSheet: View {
     @State private var name = ""
     @State private var url = ""
     @State private var token = ""
+    @State private var urlError = ""
 
     private var isEdit: Bool {
         if case .edit = mode { return true } else { return false }
@@ -369,6 +370,12 @@ struct GatewayEditSheet: View {
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .onChange(of: url) { urlError = "" }
+                if !urlError.isEmpty {
+                    Text(urlError)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.red.opacity(0.8))
+                }
             }
 
             VStack(spacing: 16) {
@@ -389,9 +396,18 @@ struct GatewayEditSheet: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(isEdit ? "保存" : "添加") {
+                    let trimmedUrl = url.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard let parsed = URL(string: trimmedUrl),
+                          let scheme = parsed.scheme?.lowercased(),
+                          (scheme == "ws" || scheme == "wss"),
+                          parsed.host != nil else {
+                        urlError = "请输入有效的 WebSocket 地址 (ws:// 或 wss://)"
+                        return
+                    }
+                    urlError = ""
                     let config = GatewayConfig(
                         id: existingId ?? UUID().uuidString,
-                        name: name, url: url, token: token
+                        name: name, url: trimmedUrl, token: token
                     )
                     onSave(config)
                     dismiss()

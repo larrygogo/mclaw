@@ -282,7 +282,8 @@ struct ConversationDetailView: View {
         } label: {
             Image(systemName: speechManager.isRecording ? "waveform.circle.fill" : "mic")
                 .font(.system(size: 20))
-                .foregroundStyle(speechManager.isRecording ? mcGreen : .white.opacity(0.4))
+                .foregroundStyle(speechManager.isRecording ? mcGreen :
+                    speechManager.permissionDenied ? .red.opacity(0.5) : .white.opacity(0.4))
                 .frame(width: 32, height: 32)
         }
     }
@@ -302,7 +303,7 @@ struct ConversationDetailView: View {
         guard !text.isEmpty || !pendingImages.isEmpty else { return }
 
         // Compress first image (gateway supports one attachment per message)
-        let imageData = pendingImages.first.flatMap { compressImage($0, maxBytes: 4_500_000) }
+        let imageData = pendingImages.first.map { compressImage($0, maxBytes: 4_500_000) }
         let extraImages = pendingImages.dropFirst().map { compressImage($0, maxBytes: 4_500_000) }
         store.draftTexts[conversation.id] = ""
         pendingImages = []
@@ -313,10 +314,8 @@ struct ConversationDetailView: View {
             // Send first image with text
             await store.sendMessage(sessionKey: conversation.sessionKey, agentId: conversation.agentId, text: text, imageData: imageData)
             // Send remaining images as separate messages
-            for extra in extraImages {
-                if let data = extra {
-                    await store.sendMessage(sessionKey: conversation.sessionKey, agentId: conversation.agentId, text: "", imageData: data)
-                }
+            for data in extraImages {
+                await store.sendMessage(sessionKey: conversation.sessionKey, agentId: conversation.agentId, text: "", imageData: data)
             }
             isSending = false
         }

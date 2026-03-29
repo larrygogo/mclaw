@@ -82,6 +82,7 @@ typealias EventHandler = (String, [String: Any]) -> Void
 @Observable
 final class GatewayClient {
     private(set) var isConnected = false
+    private(set) var isConnecting = false
 
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
@@ -101,6 +102,9 @@ final class GatewayClient {
     }
 
     func connect(url: String, token: String) async throws {
+        guard !isConnecting else { throw GatewayClientError.connectionFailed }
+        isConnecting = true
+        defer { isConnecting = false }
         disconnect()
         suppressReconnect = false
         gatewayURL = url

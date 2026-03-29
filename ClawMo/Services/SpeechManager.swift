@@ -6,26 +6,34 @@ import AVFoundation
 class SpeechManager {
     var isRecording = false
     var transcript = ""
+    var permissionDenied = false
 
     private var recognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+    private var timeoutTask: Task<Void, Never>?
 
     init() {
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-Hans"))
     }
 
     func start() {
+        permissionDenied = false
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
-                guard status == .authorized else { return }
+                if status != .authorized {
+                    self?.permissionDenied = true
+                    return
+                }
                 self?.startRecording()
             }
         }
     }
 
     func stop() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
@@ -57,6 +65,15 @@ class SpeechManager {
         audioEngine.prepare()
         try? audioEngine.start()
         isRecording = true
+
+        // Auto-stop after 60 seconds
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(60))
+            DispatchQueue.main.async {
+                guard let self, self.isRecording else { return }
+                self.stop()
+            }
+        }
 
         recognitionTask = recognizer?.recognitionTask(with: request) { [weak self] result, error in
             DispatchQueue.main.async {

@@ -418,6 +418,7 @@ struct AgentDetailSheet: View {
             Button {
                 let convId = "user:\(agent.id)"
                 store.pendingAgent = agent
+                store.unhideConversation(convId)
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     store.selectedTab = 1
