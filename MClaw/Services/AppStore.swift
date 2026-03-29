@@ -94,7 +94,8 @@ final class AppStore {
 
     func updateConversationPreview(for msg: ChatMessage) {
         guard let i = conversations.firstIndex(where: { $0.allSessionKeys.contains(msg.sessionKey) }) else { return }
-        if msg.timestamp >= conversations[i].lastTimestamp {
+        // Always update if preview is empty, or if this message is newer
+        if conversations[i].lastMessageText.isEmpty || msg.timestamp >= conversations[i].lastTimestamp {
             let preview = msg.localImageData != nil ? "[图片]" : String(msg.text.prefix(60))
             conversations[i].lastMessageText = preview
             conversations[i].lastTimestamp = msg.timestamp
