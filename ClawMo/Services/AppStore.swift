@@ -382,6 +382,20 @@ final class AppStore {
         }
     }
 
+    func abortChat(sessionKey: String, agentId: String) async {
+        do {
+            try await gateway.abortChat(sessionKey: sessionKey)
+            messageService.updateAgent(agentId, status: .idle, streaming: .some(nil))
+            Haptics.medium()
+        } catch {
+            NSLog("[store] abortChat error: %@", "\(error)")
+        }
+    }
+
+    func isAgentWorking(agentId: String) -> Bool {
+        agentStates[agentId]?.status == .working
+    }
+
     private func mockAgentReply(sessionKey: String, agentId: String, userText: String) {
         let agentName = agentList.first(where: { $0.id == agentId })?.name ?? "Agent"
         Task { @MainActor in

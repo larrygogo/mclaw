@@ -25,7 +25,21 @@ struct ConversationDetailView: View {
     private var inputTextValue: String { store.draftTexts[conversation.id] ?? "" }
 
     var messages: [ChatMessage] {
-        store.mountedMessages(for: conversation)
+        var msgs = store.mountedMessages(for: conversation)
+        // Inline streaming text as a temporary message at the end
+        if let streaming = streamingText, !streaming.isEmpty {
+            let streamMsg = ChatMessage(
+                id: "streaming-\(conversation.agentId)",
+                sessionKey: conversation.sessionKey,
+                agentId: conversation.agentId,
+                role: .agent,
+                text: streaming + " ▍",
+                timestamp: Date(),
+                runId: nil
+            )
+            msgs.append(streamMsg)
+        }
+        return msgs
     }
 
     var canSend: Bool { conversation.kind == .user }
@@ -95,15 +109,6 @@ struct ConversationDetailView: View {
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.orange.opacity(0.08))
-            } else if let streaming = streamingText, !streaming.isEmpty {
-                StreamingBubble(
-                    text: streaming,
-                    avatar: conversation.kind == .a2a ? conversation.secondaryAvatar : conversation.avatar,
-                    agentId: conversation.agentId
-                )
-                .padding(.horizontal, 14)
-                .padding(.vertical, 4)
-                .transition(.opacity)
             }
 
             if canSend {
@@ -205,7 +210,21 @@ struct ConversationDetailView: View {
 
                     plusMenu
 
-                    if canSendNow {
+                    if store.isAgentWorking(agentId: conversation.agentId) {
+                        Button {
+                            Task {
+                                await store.abortChat(
+                                    sessionKey: conversation.sessionKey,
+                                    agentId: conversation.agentId
+                                )
+                            }
+                        } label: {
+                            Image(systemName: "stop.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(.red.opacity(0.8))
+                                .frame(width: 32, height: 32)
+                        }
+                    } else if canSendNow {
                         Button { send() } label: {
                             Image(systemName: isSending ? "ellipsis" : "arrow.up.circle.fill")
                                 .font(.system(size: 22))

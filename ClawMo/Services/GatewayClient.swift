@@ -205,6 +205,10 @@ final class GatewayClient {
         _ = try await request(method: "chat.send", params: params)
     }
 
+    func abortChat(sessionKey: String) async throws {
+        _ = try await request(method: "chat.abort", params: ["sessionKey": sessionKey])
+    }
+
     func chatHistory(sessionKey: String, limit: Int = 50) async throws -> [String: Any] {
         try await request(method: "chat.history", params: ["sessionKey": sessionKey, "limit": limit])
     }
