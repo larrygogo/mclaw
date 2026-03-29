@@ -40,13 +40,11 @@ struct MessageListView: View {
                             .padding(.vertical, 8)
 
                         ForEach(group.messages) { msg in
-                            Group {
-                                if let conv = conversation, conv.kind == .a2a {
-                                    A2AMessageBubble(message: msg, conversation: conv)
-                                } else {
-                                    MessageBubble(message: msg, agentAvatar: agentAvatar)
-                                }
-                            }
+                            MessageBubble(
+                                message: msg,
+                                agentAvatar: agentAvatar,
+                                senderName: a2aName(for: msg)
+                            )
                             .id(msg.id)
                         }
                     }
@@ -114,6 +112,12 @@ struct MessageListView: View {
                                    messages: currentMsgs))
         }
         return groups
+    }
+
+    /// Returns agent name for A2A conversations, nil for regular
+    private func a2aName(for msg: ChatMessage) -> String? {
+        guard let conv = conversation, conv.kind == .a2a else { return nil }
+        return msg.role == .user ? conv.displayName : conv.secondaryName
     }
 
     struct DateGroup {

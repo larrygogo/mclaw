@@ -7,6 +7,7 @@ private let mcBg = Theme.bg
 struct MessageBubble: View {
     let message: ChatMessage
     let agentAvatar: String
+    var senderName: String? = nil  // shown for A2A conversations
 
     var isUser: Bool { message.role == .user }
 
@@ -31,6 +32,12 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                if let name = senderName {
+                    Text(name)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.4))
+                        .padding(.horizontal, 4)
+                }
                 // Text bubble
                 if hasText {
                     SelectableText(text: textOnly, fontSize: 14)
