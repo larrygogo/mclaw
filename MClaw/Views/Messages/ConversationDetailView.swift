@@ -67,9 +67,6 @@ struct ConversationDetailView: View {
             }
 
             if canSend {
-                Rectangle()
-                    .fill(Color.white.opacity(0.06))
-                    .frame(height: 1)
                 messageInput
             }
         }
