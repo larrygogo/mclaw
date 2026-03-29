@@ -264,6 +264,14 @@ final class AppStore {
         }
     }
 
+    func retryMessage(_ msg: ChatMessage) async {
+        // Remove failed message
+        messages.removeAll { $0.id == msg.id }
+        // Resend
+        await sendMessage(sessionKey: msg.sessionKey, agentId: msg.agentId,
+                          text: msg.text, imageData: msg.localImageData)
+    }
+
     private func updateMessageStatus(id: String, status: MessageSendStatus) {
         if let i = messages.firstIndex(where: { $0.id == id }) {
             messages[i].sendStatus = status

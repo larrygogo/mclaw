@@ -61,7 +61,8 @@ struct ConversationDetailView: View {
                     agentAvatar: conversation.kind == .a2a ? conversation.secondaryAvatar : conversation.avatar,
                     conversation: conversation,
                     fullyMounted: fullyMounted,
-                    onMountMore: { store.mountMore(for: liveConversation) }
+                    onMountMore: { store.mountMore(for: liveConversation) },
+                    onRetry: { msg in Task { await store.retryMessage(msg) } }
                 )
             }
 

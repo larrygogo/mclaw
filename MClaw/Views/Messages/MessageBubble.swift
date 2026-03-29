@@ -7,7 +7,8 @@ private let mcBg = Theme.bg
 struct MessageBubble: View {
     let message: ChatMessage
     let agentAvatar: String
-    var senderName: String? = nil  // shown for A2A conversations
+    var senderName: String? = nil
+    var onRetry: (() -> Void)? = nil
 
     var isUser: Bool { message.role == .user }
 
@@ -80,7 +81,7 @@ struct MessageBubble: View {
                                 .foregroundStyle(.white.opacity(0.3))
                         case .failed:
                             Button {
-                                // TODO: retry
+                                onRetry?()
                             } label: {
                                 Image(systemName: "exclamationmark.circle")
                                     .font(.system(size: 12))

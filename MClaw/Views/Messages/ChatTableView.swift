@@ -13,6 +13,7 @@ struct ChatTableView: UIViewRepresentable {
     var conversation: Conversation? = nil
     let fullyMounted: Bool
     let onMountMore: () -> Void
+    var onRetry: ((ChatMessage) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -109,7 +110,8 @@ struct ChatTableView: UIViewRepresentable {
                     MessageBubble(
                         message: msg,
                         agentAvatar: parent.agentAvatar,
-                        senderName: senderName
+                        senderName: senderName,
+                        onRetry: msg.sendStatus == .failed ? { [weak self] in self?.parent.onRetry?(msg) } : nil
                     )
                     // In flipped table: below message = visually above
                     if let dateLabel {
