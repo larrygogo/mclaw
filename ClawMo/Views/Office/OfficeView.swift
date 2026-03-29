@@ -296,7 +296,7 @@ struct AgentCard: View {
 
             // Name + status
             VStack(spacing: 4) {
-                Text(agent.name)
+                Text(UserDefaults.standard.string(forKey: "agent_name_\(agent.id)") ?? agent.name)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
 
@@ -334,8 +334,14 @@ struct AgentDetailSheet: View {
     @Environment(\.dismiss) var dismiss
     @Environment(AppStore.self) var store
     @State private var showIconPicker = false
+    @State private var isEditingName = false
+    @State private var editedName = ""
 
     var status: AgentStatus { state?.status ?? .offline }
+
+    var displayName: String {
+        UserDefaults.standard.string(forKey: "agent_name_\(agent.id)") ?? agent.name
+    }
 
     var statusColor: Color {
         switch status {
@@ -384,9 +390,41 @@ struct AgentDetailSheet: View {
 
             // Name & status
             VStack(spacing: 6) {
-                Text(agent.name)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white)
+                if isEditingName {
+                    HStack(spacing: 8) {
+                        TextField("名称", text: $editedName)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                            .onSubmit { saveName() }
+                        Button {
+                            saveName()
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(mcGreen)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                } else {
+                    Button {
+                        editedName = displayName
+                        isEditingName = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(displayName)
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(.white)
+                            Image(systemName: "pencil")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.white.opacity(0.3))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 HStack(spacing: 6) {
                     Circle()
@@ -446,6 +484,17 @@ struct AgentDetailSheet: View {
         .sheet(isPresented: $showIconPicker) {
             IconPickerSheet(agentId: agent.id)
         }
+    }
+
+    private func saveName() {
+        let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == agent.name {
+            UserDefaults.standard.removeObject(forKey: "agent_name_\(agent.id)")
+        } else {
+            UserDefaults.standard.set(trimmed, forKey: "agent_name_\(agent.id)")
+        }
+        NotificationCenter.default.post(name: .agentAvatarChanged, object: nil)
+        isEditingName = false
     }
 }
 
