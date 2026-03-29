@@ -139,7 +139,8 @@ struct ChatTableView: UIViewRepresentable {
         }
 
         @objc func handleTap() {
-            tableView?.endEditing(true)
+            // Dismiss keyboard (including SwiftUI TextField) and text selection
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
 
         // MARK: - Delegate (load more)
