@@ -7,7 +7,8 @@ private let mcBg    = Theme.bg
 struct SettingsView: View {
     @Environment(AppStore.self) var store
     @State private var showAddSheet = false
-    @State private var editingGateway: GatewayConfig?
+    @State private var renamingGateway: GatewayConfig?
+    @State private var renameText = ""
     @State private var connectingId: String?
     @State private var errorMessage: String?
     @State private var duplicateWarning = false
@@ -40,7 +41,8 @@ struct SettingsView: View {
                                         Image(systemName: "trash")
                                     }
                                     Button {
-                                        editingGateway = gw
+                                        renameText = gw.name
+                                        renamingGateway = gw
                                     } label: {
                                         Image(systemName: "square.and.pencil")
                                     }
@@ -125,7 +127,7 @@ struct SettingsView: View {
                 }
             }
             .navigationDestination(isPresented: $showAddSheet) {
-                GatewayEditSheet(mode: .add) { config in
+                GatewayEditSheet { config in
                     if store.gateways.contains(where: { $0.url == config.url && $0.token == config.token }) {
                         duplicateWarning = true
                     } else {
@@ -133,15 +135,22 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationDestination(item: $editingGateway) { gw in
-                GatewayEditSheet(mode: .edit(gw)) { updated in
-                    if let i = store.gateways.firstIndex(where: { $0.id == updated.id }) {
-                        store.gateways[i] = updated
+            .onAppear { cacheSize = store.getCacheSize() }
+            .alert("重命名", isPresented: Binding(
+                get: { renamingGateway != nil },
+                set: { if !$0 { renamingGateway = nil } }
+            )) {
+                TextField("名称", text: $renameText)
+                Button("保存") {
+                    if let gw = renamingGateway, !renameText.trimmingCharacters(in: .whitespaces).isEmpty,
+                       let i = store.gateways.firstIndex(where: { $0.id == gw.id }) {
+                        store.gateways[i].name = renameText.trimmingCharacters(in: .whitespaces)
                         store.saveGateways()
                     }
+                    renamingGateway = nil
                 }
+                Button("取消", role: .cancel) { renamingGateway = nil }
             }
-            .onAppear { cacheSize = store.getCacheSize() }
             .alert("确认清理", isPresented: $showClearConfirm) {
                 Button("清理", role: .destructive) {
                     store.clearCache()
@@ -291,21 +300,9 @@ struct GatewayRow: View {
     }
 }
 
-// MARK: - Gateway Edit Sheet (add / edit)
+// MARK: - Gateway Add Sheet
 
 struct GatewayEditSheet: View {
-    enum Mode: Identifiable {
-        case add
-        case edit(GatewayConfig)
-        var id: String {
-            switch self {
-            case .add: return "add"
-            case .edit(let c): return c.id
-            }
-        }
-    }
-
-    let mode: Mode
     let onSave: (GatewayConfig) -> Void
 
     @Environment(\.dismiss) var dismiss
@@ -313,14 +310,6 @@ struct GatewayEditSheet: View {
     @State private var url = ""
     @State private var token = ""
     @State private var urlError = ""
-
-    private var isEdit: Bool {
-        if case .edit = mode { return true } else { return false }
-    }
-
-    private var existingId: String? {
-        if case .edit(let c) = mode { return c.id } else { return nil }
-    }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -351,12 +340,12 @@ struct GatewayEditSheet: View {
         .padding(.horizontal)
         .padding(.top, 20)
         .background(mcBg)
-        .navigationTitle(isEdit ? "编辑 Gateway" : "添加 Gateway")
+        .navigationTitle("添加 Gateway")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(isEdit ? "保存" : "添加") {
+                Button("添加") {
                     let trimmedUrl = url.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard let parsed = URL(string: trimmedUrl),
                           let scheme = parsed.scheme?.lowercased(),
@@ -367,7 +356,6 @@ struct GatewayEditSheet: View {
                     }
                     urlError = ""
                     let config = GatewayConfig(
-                        id: existingId ?? UUID().uuidString,
                         name: name, url: trimmedUrl, token: token
                     )
                     onSave(config)
@@ -378,11 +366,6 @@ struct GatewayEditSheet: View {
             }
         }
         .onAppear {
-            if case .edit(let c) = mode {
-                name = c.name
-                url = c.url
-                token = c.token
-            }
         }
     }
 
