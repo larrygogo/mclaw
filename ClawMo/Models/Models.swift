@@ -29,6 +29,7 @@ struct AgentState {
     var currentTask: String?
     var lastActivity: Date?
     var streamingText: String?
+    var lastError: String?
 }
 
 // MARK: - Conversation

@@ -42,6 +42,10 @@ struct ConversationDetailView: View {
         store.agentStates[conversation.agentId]?.streamingText
     }
 
+    var agentError: String? {
+        store.agentStates[conversation.agentId]?.lastError
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ConnectionBanner()
@@ -78,7 +82,20 @@ struct ConversationDetailView: View {
                 )
             }
 
-            if let streaming = streamingText, !streaming.isEmpty {
+            if let error = agentError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12))
+                    Text(error)
+                        .font(.system(size: 12, design: .monospaced))
+                        .lineLimit(2)
+                }
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.08))
+            } else if let streaming = streamingText, !streaming.isEmpty {
                 StreamingBubble(
                     text: streaming,
                     avatar: conversation.kind == .a2a ? conversation.secondaryAvatar : conversation.avatar,

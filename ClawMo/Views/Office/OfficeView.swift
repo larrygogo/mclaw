@@ -309,13 +309,21 @@ struct AgentCard: View {
                         .foregroundStyle(accentColor)
                 }
 
-                let task = (status == .working ? state?.currentTask : nil) ?? " "
-                Text(task)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(Theme.textTertiary)
-                    .lineLimit(1)
-                    .multilineTextAlignment(.center)
-                    .opacity(task == " " ? 0 : 1)
+                if let error = state?.lastError {
+                    Text(error)
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(.orange)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.center)
+                } else {
+                    let task = (status == .working ? state?.currentTask : nil) ?? " "
+                    Text(task)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Theme.textTertiary)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.center)
+                        .opacity(task == " " ? 0 : 1)
+                }
             }
         }
         .frame(maxWidth: .infinity)

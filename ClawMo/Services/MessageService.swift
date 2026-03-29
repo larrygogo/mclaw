@@ -91,9 +91,16 @@ final class MessageService {
             switch data["phase"] as? String {
             case "start":
                 updateAgent(agentId, status: .working, streaming: .some(""))
+                clearAgentError(agentId)
             case "end":
                 updateAgent(agentId, status: .idle, streaming: .some(nil))
                 if let runId { runTexts.removeValue(forKey: runId) }
+            case "error":
+                let errorText = data["error"] as? String ?? "未知错误"
+                updateAgent(agentId, status: .idle, streaming: .some(nil))
+                setAgentError(agentId, error: errorText)
+                if let runId { runTexts.removeValue(forKey: runId) }
+                Haptics.error()
             default:
                 break
             }
@@ -237,6 +244,20 @@ final class MessageService {
         if case .some(let v) = streaming { state.streamingText = v }
         state.lastActivity = Date()
         store.agentStates[id] = state
+    }
+
+    func setAgentError(_ id: String, error: String) {
+        guard let store else { return }
+        var state = store.agentStates[id] ?? AgentState(id: id)
+        state.lastError = error
+        store.agentStates[id] = state
+    }
+
+    func clearAgentError(_ id: String) {
+        guard let store else { return }
+        if store.agentStates[id]?.lastError != nil {
+            store.agentStates[id]?.lastError = nil
+        }
     }
 
     static func agentIdFromSessionKey(_ key: String) -> String? {
