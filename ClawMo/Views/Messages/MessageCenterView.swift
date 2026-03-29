@@ -127,7 +127,7 @@ struct MessageCenterView: View {
                                 } label: {
                                     Image(systemName: "eye.slash")
                                 }
-                                .tint(.white.opacity(0.15))
+                                .tint(.orange)
                             }
                             .listRowBackground(mcBg)
                             .listRowSeparatorTint(.white.opacity(0.04))
