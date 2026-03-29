@@ -67,7 +67,8 @@ struct ConversationRow: View {
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.3))
                 }
-                Text(conversation.lastMessageText.isEmpty
+                let _ = { NSLog("[row] name=%@ text='%@' len=%d", conversation.displayName, conversation.lastMessageText, conversation.lastMessageText.count) }()
+                Text(conversation.lastMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                      ? (conversation.historyLoaded ? "暂无消息" : "加载中...")
                      : conversation.lastMessageText)
                     .font(.system(size: 13))

@@ -92,7 +92,7 @@ final class AppStore {
         messageService.isFullyMounted(for: conversation)
     }
 
-    func updateConversationPreview(for msg: ChatMessage) {
+    @MainActor func updateConversationPreview(for msg: ChatMessage) {
         let text = msg.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || msg.localImageData != nil else { return }
         guard let i = conversations.firstIndex(where: { $0.allSessionKeys.contains(msg.sessionKey) }) else { return }
@@ -103,7 +103,7 @@ final class AppStore {
         }
     }
 
-    func updateConversationPreviews() {
+    @MainActor func updateConversationPreviews() {
         var updated = conversations
         for i in updated.indices {
             let keys = Set(updated[i].allSessionKeys)
