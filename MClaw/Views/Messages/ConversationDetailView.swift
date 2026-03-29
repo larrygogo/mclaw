@@ -131,7 +131,6 @@ struct ConversationDetailView: View {
             }
 
             if isExpanded {
-                // Expanded: TextField on top, toolbar below
                 TextField("发消息...", text: $inputText, axis: .vertical)
                     .focused($isInputFocused)
                     .lineLimit(1...6)
@@ -166,14 +165,15 @@ struct ConversationDetailView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
             } else {
-                // Collapsed: [mic] [TextField] [+]
                 HStack(spacing: 8) {
                     voiceButton
 
-                    TextField("发消息...", text: $inputText, axis: .vertical)
-                        .focused($isInputFocused)
-                        .lineLimit(1...3)
-                        .font(.system(size: 15))
+                    Button { isInputFocused = true } label: {
+                        Text("发消息...")
+                            .font(.system(size: 15))
+                            .foregroundStyle(.white.opacity(0.3))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
 
                     plusMenu
                 }
