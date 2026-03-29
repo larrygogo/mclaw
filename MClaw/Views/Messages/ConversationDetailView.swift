@@ -55,13 +55,13 @@ struct ConversationDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                MessageListView(
+                // POC: UITableView-based list for smooth scrolling
+                ChatTableView(
                     messages: messages,
-                    streamingText: streamingText,
                     agentAvatar: conversation.kind == .a2a ? conversation.secondaryAvatar : conversation.avatar,
+                    conversation: conversation,
                     fullyMounted: fullyMounted,
-                    onMountMore: { store.mountMore(for: liveConversation) },
-                    conversation: conversation
+                    onMountMore: { store.mountMore(for: liveConversation) }
                 )
             }
 
