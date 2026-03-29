@@ -150,6 +150,14 @@ final class AppStore {
     // MARK: - Connect
 
     func connect(to config: GatewayConfig) async {
+        // Mock gateway: load test data without connecting
+        if config.url == "mock://test" {
+            loadMockData()
+            activeGatewayId = config.id
+            UserDefaults.standard.set(config.id, forKey: "mclaw-active-gateway")
+            return
+        }
+
         isConnecting = true
         connectionError = nil
 
