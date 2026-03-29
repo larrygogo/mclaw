@@ -67,7 +67,9 @@ struct ConversationRow: View {
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.3))
                 }
-                Text(conversation.lastMessageText.isEmpty ? "暂无消息" : conversation.lastMessageText)
+                Text(conversation.lastMessageText.isEmpty
+                     ? (conversation.historyLoaded ? "暂无消息" : "加载中...")
+                     : conversation.lastMessageText)
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.4))
                     .lineLimit(1)
