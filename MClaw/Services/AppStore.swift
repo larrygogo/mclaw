@@ -103,18 +103,17 @@ final class AppStore {
     }
 
     func updateConversationPreviews() {
-        var updated = conversations
-        for i in updated.indices {
-            let keys = Set(updated[i].allSessionKeys)
+        for i in conversations.indices {
+            let keys = Set(conversations[i].allSessionKeys)
             let matched = messages.filter { keys.contains($0.sessionKey) }
             let withText = matched.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.localImageData != nil }
             if let last = withText.max(by: { $0.timestamp < $1.timestamp }) {
-                let preview = last.localImageData != nil ? "[图片]" : String(last.text.prefix(60))
-                updated[i].lastMessageText = preview
-                updated[i].lastTimestamp = last.timestamp
+                let trimmed = last.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let preview = last.localImageData != nil ? "[图片]" : String(trimmed.prefix(60))
+                conversations[i].lastMessageText = preview
+                conversations[i].lastTimestamp = last.timestamp
             }
         }
-        conversations = updated
     }
 
     // MARK: - Gateway Config
