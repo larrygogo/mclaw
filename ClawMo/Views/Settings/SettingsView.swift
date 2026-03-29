@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var errorMessage: String?
     @State private var duplicateWarning = false
     @State private var showClearConfirm = false
+    @State private var deletingGateway: GatewayConfig?
     @State private var cacheSize: String = "计算中..."
 
     var body: some View {
@@ -34,7 +35,7 @@ struct SettingsView: View {
                                 )
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button(role: .destructive) {
-                                        store.deleteGateway(id: gw.id)
+                                        deletingGateway = gw
                                     } label: {
                                         Image(systemName: "trash")
                                     }
@@ -154,6 +155,18 @@ struct SettingsView: View {
                 Button("知道了", role: .cancel) {}
             } message: {
                 Text("已存在相同 URL 和 Token 的 Gateway 配置")
+            }
+            .alert("确认删除", isPresented: Binding(
+                get: { deletingGateway != nil },
+                set: { if !$0 { deletingGateway = nil } }
+            )) {
+                Button("删除", role: .destructive) {
+                    if let gw = deletingGateway { store.deleteGateway(id: gw.id) }
+                    deletingGateway = nil
+                }
+                Button("取消", role: .cancel) { deletingGateway = nil }
+            } message: {
+                Text("删除「\(deletingGateway?.name ?? "")」？此操作不可恢复。")
             }
         }
     }
