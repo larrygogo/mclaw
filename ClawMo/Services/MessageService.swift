@@ -165,6 +165,14 @@ final class MessageService {
                 let label = "[图片 \(sizeStr)]"
                 text = text.isEmpty ? label : "\(text)\n\(label)"
             }
+            // For messages with only toolCall/thinking and no text, show a summary
+            if text.isEmpty {
+                let toolCalls = content.filter { $0["type"] as? String == "toolCall" }
+                if !toolCalls.isEmpty {
+                    let names = toolCalls.compactMap { $0["name"] as? String }
+                    text = "[\(names.joined(separator: ", "))]"
+                }
+            }
             guard !text.isEmpty else { continue }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.contains("HEARTBEAT") else { continue }

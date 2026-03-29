@@ -409,8 +409,11 @@ final class AppStore {
         for index in startIndex..<keys.count {
             let key = keys[index]
             let agentId = MessageService.agentIdFromSessionKey(key) ?? conversation.agentId
-            if let hist = try? await gateway.chatHistory(sessionKey: key, limit: 100) {
+            do {
+                let hist = try await gateway.chatHistory(sessionKey: key, limit: 200)
                 messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
+            } catch {
+                NSLog("[fetch] chatHistory failed for %@: %@", key, "\(error)")
             }
             if let i = conversations.firstIndex(where: { $0.id == conversation.id }) {
                 conversations[i].loadedSessionCount = index + 1
@@ -433,7 +436,7 @@ final class AppStore {
         }
         let key = keys[nextIndex]
         let agentId = MessageService.agentIdFromSessionKey(key) ?? conversation.agentId
-        if let hist = try? await gateway.chatHistory(sessionKey: key, limit: 100) {
+        if let hist = try? await gateway.chatHistory(sessionKey: key, limit: 200) {
             messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
         }
         if let i = conversations.firstIndex(where: { $0.id == conversation.id }) {
