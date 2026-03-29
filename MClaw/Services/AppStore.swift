@@ -93,10 +93,11 @@ final class AppStore {
     }
 
     func updateConversationPreview(for msg: ChatMessage) {
+        let text = msg.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty || msg.localImageData != nil else { return }
         guard let i = conversations.firstIndex(where: { $0.allSessionKeys.contains(msg.sessionKey) }) else { return }
-        // Always update if preview is empty, or if this message is newer
         if conversations[i].lastMessageText.isEmpty || msg.timestamp >= conversations[i].lastTimestamp {
-            let preview = msg.localImageData != nil ? "[图片]" : String(msg.text.prefix(60))
+            let preview = msg.localImageData != nil ? "[图片]" : String(text.prefix(60))
             conversations[i].lastMessageText = preview
             conversations[i].lastTimestamp = msg.timestamp
         }
@@ -106,7 +107,6 @@ final class AppStore {
         for i in conversations.indices {
             let keys = Set(conversations[i].allSessionKeys)
             let matched = messages.filter { keys.contains($0.sessionKey) }
-            // Find latest message with actual displayable content
             if let last = matched
                 .filter({ !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.localImageData != nil })
                 .max(by: { $0.timestamp < $1.timestamp }) {
