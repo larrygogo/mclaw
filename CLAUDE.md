@@ -1,4 +1,4 @@
-# MClaw - OpenClaw Gateway iOS Client
+# ClawMo - OpenClaw Gateway iOS Client
 
 ## Project Overview
 iOS native client for OpenClaw Gateway, providing IM-style interface to interact with AI agents.
@@ -13,8 +13,8 @@ Built with SwiftUI + UIKit hybrid, targeting iOS 17+.
 
 ## Project Structure
 ```
-MClaw/
-├── MClawApp.swift                    # App entry, ModelContainer setup
+ClawMo/
+├── ClawMoApp.swift                    # App entry, ModelContainer setup
 ├── Theme/
 │   └── Theme.swift                   # Centralized colors, Color(hex:) extension
 ├── Models/
@@ -83,8 +83,8 @@ MClaw/
 ## Build & Run
 ```bash
 # Simulator (mock mode)
-xcodebuild -scheme MClaw -destination 'id=34434E56-BC6F-4D89-B4FE-C824AA379BE1' build
-xcrun simctl launch 34434E56-BC6F-4D89-B4FE-C824AA379BE1 mclaw.MClaw -- -mock
+xcodebuild -scheme ClawMo -destination 'id=34434E56-BC6F-4D89-B4FE-C824AA379BE1' build
+xcrun simctl launch 34434E56-BC6F-4D89-B4FE-C824AA379BE1 clawmo.ClawMo -- -mock
 
 # Real device: select in Xcode → Run
 ```
