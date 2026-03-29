@@ -169,11 +169,6 @@ struct ConversationDetailView: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white.opacity(0.06))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.08), lineWidth: 1))
-        )
         .padding(.horizontal, 10)
         .padding(.bottom, 6)
         .onChange(of: selectedPhoto) {
