@@ -70,7 +70,9 @@ struct ConversationDetailView: View {
                     conversation: conversation,
                     fullyMounted: fullyMounted,
                     onMountMore: { store.mountMore(for: liveConversation) },
-                    onRetry: { msg in Task { await store.retryMessage(msg) } }
+                    onRetry: { msg in Task { await store.retryMessage(msg) } },
+                    savedOffset: store.scrollOffsets[conversation.id],
+                    onOffsetChanged: { store.scrollOffsets[conversation.id] = $0 }
                 )
             }
 

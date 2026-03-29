@@ -14,6 +14,8 @@ struct ChatTableView: UIViewRepresentable {
     let fullyMounted: Bool
     let onMountMore: () -> Void
     var onRetry: ((ChatMessage) -> Void)? = nil
+    var savedOffset: CGFloat?
+    var onOffsetChanged: ((CGFloat) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -30,8 +32,8 @@ struct ChatTableView: UIViewRepresentable {
         tv.delegate = context.coordinator
         tv.register(UITableViewCell.self, forCellReuseIdentifier: "msg")
         context.coordinator.tableView = tv
+        context.coordinator.savedOffset = savedOffset
 
-        // Tap anywhere to dismiss text selection
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
         tap.cancelsTouchesInView = false
         tv.addGestureRecognizer(tap)
@@ -45,7 +47,7 @@ struct ChatTableView: UIViewRepresentable {
         coord.rebuildItems()
         tv.reloadData()
 
-        // Few messages: push content to visual top (= native bottom inset in flipped table)
+        // Few messages: push content to visual top
         tv.layoutIfNeeded()
         let contentH = tv.contentSize.height
         let frameH = tv.frame.height
@@ -53,6 +55,12 @@ struct ChatTableView: UIViewRepresentable {
             tv.contentInset.top = frameH - contentH
         } else {
             tv.contentInset.top = 0
+        }
+
+        // Restore saved scroll position (once)
+        if !context.coordinator.didRestoreOffset, let offset = context.coordinator.savedOffset {
+            context.coordinator.didRestoreOffset = true
+            tv.contentOffset.y = offset
         }
     }
 
@@ -70,6 +78,8 @@ struct ChatTableView: UIViewRepresentable {
         var items: [Item] = []
         weak var tableView: UITableView?
         private var loadMoreTriggered = false
+        var savedOffset: CGFloat?
+        var didRestoreOffset = false
 
         init(parent: ChatTableView) {
             self.parent = parent
@@ -145,6 +155,16 @@ struct ChatTableView: UIViewRepresentable {
 
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+
+        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            parent.onOffsetChanged?(scrollView.contentOffset.y)
+        }
+
+        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            if !decelerate {
+                parent.onOffsetChanged?(scrollView.contentOffset.y)
+            }
         }
 
         // MARK: - Delegate (load more)
