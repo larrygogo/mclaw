@@ -10,6 +10,7 @@ struct MessageBubble: View {
     var agentId: String?
     var senderName: String?
     var onRetry: (() -> Void)?
+    @State private var showCopied = false
 
     var isUser: Bool { message.role == .user }
 
@@ -52,6 +53,26 @@ struct MessageBubble: View {
                             isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
                         )
                         .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.string = textOnly
+                                Haptics.light()
+                            } label: {
+                                Label("复制", systemImage: "doc.on.doc")
+                            }
+                            if message.sendStatus == .failed, let onRetry {
+                                Button {
+                                    onRetry()
+                                } label: {
+                                    Label("重试", systemImage: "arrow.clockwise")
+                                }
+                            }
+                            Button {
+                                shareText(textOnly)
+                            } label: {
+                                Label("分享", systemImage: "square.and.arrow.up")
+                            }
+                        }
                 }
 
                 // Local image (sent by user, skip for file messages)
@@ -99,6 +120,18 @@ struct MessageBubble: View {
         }
         .fullScreenCover(item: $fullscreenImage) { img in
             ImageViewer(image: img)
+        }
+    }
+
+    private func shareText(_ text: String) {
+        let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.windows.first?.rootViewController {
+            if let popover = av.popoverPresentationController {
+                popover.sourceView = root.view
+                popover.sourceRect = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 0, height: 0)
+            }
+            root.present(av, animated: true)
         }
     }
 }
