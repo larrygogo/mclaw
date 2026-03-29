@@ -2,7 +2,6 @@ import SwiftUI
 
 private let mcGreen = Theme.green
 private let mcBg = Theme.bg
-// MARK: - Message List (pure SwiftUI)
 
 struct MessageListView: View {
     let messages: [ChatMessage]
@@ -11,19 +10,16 @@ struct MessageListView: View {
     let fullyMounted: Bool
     let onMountMore: () -> Void
     var conversation: Conversation? = nil
-    var savedScrollId: String? = nil
-    var onScrollChanged: ((String?) -> Void)? = nil
 
     @State private var loadMoreTriggered = false
-    @State private var didInitialScroll = false
-    @State private var readyForLoadMore = false
+    @State private var hasContent = false
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 4) {
-                    // Load more trigger at top
-                    if !fullyMounted && readyForLoadMore {
+                LazyVStack(spacing: 4) {
+                    // Load more — only fires when user scrolls to top (LazyVStack)
+                    if !fullyMounted {
                         ProgressView().tint(mcGreen)
                             .padding(.vertical, 8)
                             .onAppear {
@@ -37,7 +33,6 @@ struct MessageListView: View {
                     }
 
                     ForEach(groupedByDate, id: \.date) { group in
-                        // Date header
                         Text(group.label)
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(.white.opacity(0.3))
@@ -61,31 +56,38 @@ struct MessageListView: View {
                             .id("streaming")
                     }
 
-                    // Invisible bottom anchor
                     Color.clear.frame(height: 1).id("__bottom__")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
             }
+            .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
-            .onAppear {
-                if !didInitialScroll && !messages.isEmpty {
-                    scrollToBottom(proxy)
+            .onChange(of: messages.count) { oldCount, newCount in
+                if !hasContent && newCount > 0 {
+                    // First data arrived after empty render — scroll to bottom
+                    hasContent = true
+                    DispatchQueue.main.async {
+                        proxy.scrollTo("__bottom__")
+                    }
+                } else if hasContent && newCount == oldCount + 1 {
+                    // New live message — scroll to bottom
+                    DispatchQueue.main.async {
+                        proxy.scrollTo("__bottom__")
+                    }
                 }
             }
-            .onChange(of: messages.count) { oldCount, newCount in
-                if !didInitialScroll && newCount > 0 {
-                    scrollToBottom(proxy)
-                }
-                // New live message arrived — scroll to bottom
-                if didInitialScroll && readyForLoadMore && newCount == oldCount + 1 {
-                    proxy.scrollTo("__bottom__")
+            .onAppear {
+                if !messages.isEmpty {
+                    hasContent = true
+                    DispatchQueue.main.async {
+                        proxy.scrollTo("__bottom__")
+                    }
                 }
             }
         }
     }
 
-    // Group messages by date
     private var groupedByDate: [DateGroup] {
         let cal = Calendar.current
         var groups: [DateGroup] = []
@@ -97,7 +99,7 @@ struct MessageListView: View {
             if day != currentDay {
                 if !currentMsgs.isEmpty, let cd = currentDay {
                     groups.append(DateGroup(date: "\(cd.year!)-\(cd.month!)-\(cd.day!)",
-                                           label: dateLabel(for: currentMsgs[0].timestamp),
+                                           label: formatDateSectionLabel(currentMsgs[0].timestamp),
                                            messages: currentMsgs))
                 }
                 currentDay = day
@@ -108,28 +110,15 @@ struct MessageListView: View {
         }
         if !currentMsgs.isEmpty, let cd = currentDay {
             groups.append(DateGroup(date: "\(cd.year!)-\(cd.month!)-\(cd.day!)",
-                                   label: dateLabel(for: currentMsgs[0].timestamp),
+                                   label: formatDateSectionLabel(currentMsgs[0].timestamp),
                                    messages: currentMsgs))
         }
         return groups
     }
 
-    private func dateLabel(for date: Date) -> String { formatDateSectionLabel(date) }
-
     struct DateGroup {
         let date: String
         let label: String
         let messages: [ChatMessage]
-    }
-
-    private func scrollToBottom(_ proxy: ScrollViewProxy) {
-        didInitialScroll = true
-        // Defer to next run loop to ensure VStack layout is complete
-        DispatchQueue.main.async {
-            proxy.scrollTo("__bottom__")
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            readyForLoadMore = true
-        }
     }
 }

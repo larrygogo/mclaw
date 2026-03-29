@@ -45,20 +45,20 @@ enum MockDataProvider {
             Conversation(id: "user:agent-0", sessionKey: sk0, sessionKeys: [sk0], agentId: "agent-0",
                          displayName: "小南", avatar: "star.fill", color: colors[0], kind: .user,
                          lastMessageText: "PR #42 已经审查完毕，修复建议已添加。",
-                         lastTimestamp: now.addingTimeInterval(-120), historyLoaded: true),
+                         lastTimestamp: now.addingTimeInterval(-120), historyLoaded: true, fullyLoaded: true),
             Conversation(id: "user:agent-2", sessionKey: sk2, sessionKeys: [sk2], agentId: "agent-2",
                          displayName: "码匠", avatar: "laptopcomputer", color: colors[2], kind: .user,
                          lastMessageText: "看板功能的前端已完成，等待 QA 验收。",
-                         lastTimestamp: now.addingTimeInterval(-300), historyLoaded: true),
+                         lastTimestamp: now.addingTimeInterval(-300), historyLoaded: true, fullyLoaded: true),
             Conversation(id: "user:agent-3", sessionKey: sk3, sessionKeys: [sk3], agentId: "agent-3",
                          displayName: "探针", avatar: "magnifyingglass", color: colors[3], kind: .user,
                          lastMessageText: "58/58 用例全部通过，无回归问题。",
-                         lastTimestamp: now.addingTimeInterval(-600), historyLoaded: true),
+                         lastTimestamp: now.addingTimeInterval(-600), historyLoaded: true, fullyLoaded: true),
             {
                 var c = Conversation(id: "a2a:agent-0:agent-2", sessionKey: a2a_02, sessionKeys: [a2a_02], agentId: "agent-2",
                              displayName: "小南", avatar: "star.fill", color: colors[0], kind: .a2a,
                              lastMessageText: "feat/kanban 分支代码已提交。",
-                             lastTimestamp: now.addingTimeInterval(-200), historyLoaded: true)
+                             lastTimestamp: now.addingTimeInterval(-200), historyLoaded: true, fullyLoaded: true)
                 c.secondaryName = "码匠"; c.secondaryAvatar = "laptopcomputer"
                 return c
             }(),
@@ -66,7 +66,7 @@ enum MockDataProvider {
                 var c = Conversation(id: "a2a:agent-0:agent-3", sessionKey: a2a_03, sessionKeys: [a2a_03], agentId: "agent-3",
                              displayName: "小南", avatar: "star.fill", color: colors[0], kind: .a2a,
                              lastMessageText: "集成测试已全部通过。",
-                             lastTimestamp: now.addingTimeInterval(-500), historyLoaded: true)
+                             lastTimestamp: now.addingTimeInterval(-500), historyLoaded: true, fullyLoaded: true)
                 c.secondaryName = "探针"; c.secondaryAvatar = "magnifyingglass"
                 return c
             }(),
@@ -74,7 +74,7 @@ enum MockDataProvider {
                 var c = Conversation(id: "a2a:agent-0:agent-4", sessionKey: a2a_04, sessionKeys: [a2a_04], agentId: "agent-4",
                              displayName: "小南", avatar: "star.fill", color: colors[0], kind: .a2a,
                              lastMessageText: "相关文档和 API 参考已整理完毕。",
-                             lastTimestamp: now.addingTimeInterval(-900), historyLoaded: true)
+                             lastTimestamp: now.addingTimeInterval(-900), historyLoaded: true, fullyLoaded: true)
                 c.secondaryName = "寻路"; c.secondaryAvatar = "map"
                 return c
             }(),
@@ -176,6 +176,7 @@ enum MockDataProvider {
         ]
 
         store.messages = allMessages
+        store.updateConversationPreviews()
 
         if store.gateways.isEmpty {
             store.gateways = [GatewayConfig(id: "mock", name: "Demo Gateway", url: "ws://localhost:8080", token: "")]
