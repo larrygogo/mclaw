@@ -29,15 +29,10 @@ final class MessageService {
         let keys = Set(conversation.allSessionKeys)
         let totalAvailable = store.messages.filter { keys.contains($0.sessionKey) }.count
         let current = store.mountedCounts[conversation.id] ?? 30
+        store.mountedCounts[conversation.id] = min(current + 30, totalAvailable)
 
-        if conversation.fullyLoaded {
-            // All data in memory — mount everything at once
-            store.mountedCounts[conversation.id] = totalAvailable
-        } else {
-            store.mountedCounts[conversation.id] = current + 30
-            if current + 30 >= totalAvailable {
-                Task { await store.fetchNextSession(for: conversation) }
-            }
+        if current + 30 >= totalAvailable, !conversation.fullyLoaded {
+            Task { await store.fetchNextSession(for: conversation) }
         }
         store.updateConversationPreviews()
     }
