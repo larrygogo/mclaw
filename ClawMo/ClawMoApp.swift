@@ -51,8 +51,11 @@ struct ClawMoApp: App {
         .modelContainer(modelContainer)
     }
 
-    /// Pre-warm keyboard and audio engine on launch to eliminate first-tap lag
+    /// Pre-warm keyboard, audio engine, and haptics on launch to eliminate first-tap lag
     private static func warmup() {
+        // Haptics: pre-arm feedback generators
+        Haptics.warmup()
+
         // Keyboard: add a hidden text field, briefly make it first responder
         DispatchQueue.main.async {
             let window = UIApplication.shared.connectedScenes
