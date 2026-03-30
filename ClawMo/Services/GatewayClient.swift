@@ -93,6 +93,8 @@ final class GatewayClient {
     private var suppressReconnect = false
     private var reconnectTask: Task<Void, Never>?
     private var pingTask: Task<Void, Never>?
+    private var reconnectAttempts = 0
+    private let maxReconnectAttempts = 10
     private var helloSnapshot: [String: Any]?
     private var identity: DeviceIdentity?
     private var privateKey: Curve25519.Signing.PrivateKey?
@@ -104,6 +106,7 @@ final class GatewayClient {
     func connect(url: String, token: String) async throws {
         guard !isConnecting else { throw GatewayClientError.connectionFailed }
         isConnecting = true
+        reconnectAttempts = 0
         defer { isConnecting = false }
         disconnect()
         suppressReconnect = false
@@ -148,7 +151,9 @@ final class GatewayClient {
         pingTask = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
+        urlSession?.invalidateAndCancel()
         urlSession = nil
+        reconnectAttempts = 0
         isConnected = false
         for (_, continuation) in pendingRequests {
             continuation.resume(throwing: GatewayClientError.disconnected)
@@ -435,10 +440,16 @@ final class GatewayClient {
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, !self.suppressReconnect, !url.isEmpty else { return }
-            NSLog("[GW] reconnect attempt (delay=%ds)", delay)
+            self.reconnectAttempts += 1
+            if self.reconnectAttempts > self.maxReconnectAttempts {
+                NSLog("[GW] max reconnect attempts (%d) reached, giving up", self.maxReconnectAttempts)
+                return
+            }
+            NSLog("[GW] reconnect attempt %d/%d (delay=%ds)", self.reconnectAttempts, self.maxReconnectAttempts, delay)
             do {
                 try await self.connect(url: url, token: token)
                 NSLog("[GW] reconnect succeeded")
+                self.reconnectAttempts = 0
             } catch {
                 NSLog("[GW] reconnect failed: %@", "\(error)")
                 guard !self.suppressReconnect else { return }
