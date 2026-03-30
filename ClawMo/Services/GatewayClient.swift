@@ -89,6 +89,7 @@ final class GatewayClient {
     private var gatewayURL = ""
     private var gatewayToken = ""
     private var pendingRequests: [String: CheckedContinuation<[String: Any], Error>] = [:]
+    private var timeoutTasks: [String: Task<Void, Never>] = [:]
     private var eventHandlers: [EventHandler] = []
     private var suppressReconnect = false
     private var reconnectTask: Task<Void, Never>?
@@ -106,7 +107,6 @@ final class GatewayClient {
     func connect(url: String, token: String) async throws {
         guard !isConnecting else { throw GatewayClientError.connectionFailed }
         isConnecting = true
-        reconnectAttempts = 0
         defer { isConnecting = false }
         disconnect()
         suppressReconnect = false
@@ -155,6 +155,8 @@ final class GatewayClient {
         urlSession = nil
         reconnectAttempts = 0
         isConnected = false
+        for (_, task) in timeoutTasks { task.cancel() }
+        timeoutTasks.removeAll()
         for (_, continuation) in pendingRequests {
             continuation.resume(throwing: GatewayClientError.disconnected)
         }
@@ -177,15 +179,17 @@ final class GatewayClient {
                 do {
                     try await self.webSocketTask?.send(.data(data))
                 } catch {
+                    self.timeoutTasks.removeValue(forKey: id)?.cancel()
                     if let cont = self.pendingRequests.removeValue(forKey: id) {
                         cont.resume(throwing: error)
                     }
                 }
             }
 
-            // Independent timeout task
-            Task {
+            // Timeout task — cancelled when response arrives in handleMessage()
+            timeoutTasks[id] = Task {
                 try? await Task.sleep(for: .seconds(30))
+                self.timeoutTasks.removeValue(forKey: id)
                 if let cont = self.pendingRequests.removeValue(forKey: id) {
                     cont.resume(throwing: GatewayClientError.timeout)
                 }
@@ -320,8 +324,9 @@ final class GatewayClient {
         let type_ = dict["type"] as? String
         let id = dict["id"] as? String
 
-        // Response to pending request
+        // Response to pending request — cancel timeout task
         if type_ == "res", let id, let continuation = pendingRequests.removeValue(forKey: id) {
+            timeoutTasks.removeValue(forKey: id)?.cancel()
             if dict["ok"] as? Bool == true {
                 continuation.resume(returning: dict["payload"] as? [String: Any] ?? [:])
             } else {

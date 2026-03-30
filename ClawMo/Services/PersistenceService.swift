@@ -45,7 +45,11 @@ final class PersistenceService {
         )
         guard let msg = try? context.fetch(descriptor).first else { return }
         msg.stableId = newId
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            NSLog("[persistence] updateMessageId failed: %@", "\(error)")
+        }
     }
 
     func getCacheSize() -> String {

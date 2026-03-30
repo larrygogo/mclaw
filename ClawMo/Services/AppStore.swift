@@ -427,7 +427,7 @@ final class AppStore {
                 if loadSuccess {
                     conversations[i].loadedSessionCount = index + 1
                 }
-                if !conversations[i].historyLoaded { conversations[i].historyLoaded = true }
+                if loadSuccess && !conversations[i].historyLoaded { conversations[i].historyLoaded = true }
                 if loadSuccess && index + 1 >= keys.count { conversations[i].fullyLoaded = true }
             }
         }
