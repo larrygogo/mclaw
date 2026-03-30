@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// UITextView-based selectable text — supports drag-to-select on agent message bubbles.
-/// Optimized: only re-configures when text actually changes, caches attributed string.
+/// Long press immediately shows selection handles without requiring finger lift.
 struct SelectableText: UIViewRepresentable {
     let text: String
     let fontSize: CGFloat
@@ -16,8 +16,14 @@ struct SelectableText: UIViewRepresentable {
         tv.textContainerInset = .zero
         tv.textContainer.lineFragmentPadding = 0
         tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        // Reduce selection handle lag
         tv.layoutManager.allowsNonContiguousLayout = true
+
+        // Add custom long-press to select word at touch point immediately
+        let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
+        longPress.minimumPressDuration = 0.3
+        longPress.delegate = context.coordinator
+        tv.addGestureRecognizer(longPress)
+
         context.coordinator.configure(tv, text: text, fontSize: fontSize)
         return tv
     }
@@ -34,12 +40,11 @@ struct SelectableText: UIViewRepresentable {
         return CGSize(width: min(size.width, maxWidth), height: size.height)
     }
 
-    final class Coordinator {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         private var lastText: String?
         private var lastFontSize: CGFloat?
 
         func configure(_ tv: UITextView, text: String, fontSize: CGFloat) {
-            // Skip re-configuration if text and font unchanged
             guard text != lastText || fontSize != lastFontSize else { return }
             lastText = text
             lastFontSize = fontSize
@@ -60,6 +65,44 @@ struct SelectableText: UIViewRepresentable {
                 tv.textColor = .white
                 tv.font = font
             }
+        }
+
+        @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard gesture.state == .began, let tv = gesture.view as? UITextView else { return }
+
+            let point = gesture.location(in: tv)
+            let charIndex = tv.layoutManager.characterIndex(
+                for: point,
+                in: tv.textContainer,
+                fractionOfDistanceBetweenInsertionPoints: nil
+            )
+
+            guard charIndex < tv.textStorage.length else { return }
+
+            // Select the word at touch point
+            let wordRange = tv.tokenizer.rangeEnclosingPosition(
+                tv.position(from: tv.beginningOfDocument, offset: charIndex)!,
+                with: .word,
+                inDirection: UITextDirection(rawValue: UITextStorageDirection.forward.rawValue)
+            )
+
+            if let range = wordRange {
+                tv.selectedTextRange = range
+            } else {
+                // Fallback: select character at point
+                if let start = tv.position(from: tv.beginningOfDocument, offset: charIndex),
+                   let end = tv.position(from: start, offset: 1) {
+                    tv.selectedTextRange = tv.textRange(from: start, to: end)
+                }
+            }
+
+            Haptics.light()
+        }
+
+        // Allow our long press to work alongside UITextView's built-in gestures
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
         }
     }
 }
