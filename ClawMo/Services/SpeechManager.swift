@@ -3,7 +3,7 @@ import Foundation
 @preconcurrency import AVFoundation
 
 private enum SpeechAudioQueue {
-    nonisolated(unsafe) static let shared = DispatchQueue(label: "clawmo.speech.audio")
+    static let shared = DispatchQueue(label: "clawmo.speech.audio")
 }
 
 @MainActor @Observable
