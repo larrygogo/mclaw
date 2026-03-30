@@ -132,7 +132,8 @@ final class GatewayClient {
             identity = id
             privateKey = key
         }
-        urlSession = URLSession(configuration: .default)
+        let delegate = WebSocketSessionDelegate()
+        urlSession = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
         webSocketTask = urlSession?.webSocketTask(with: wsURL)
         NSLog("[GW] webSocketTask resume, url=\(url)")
         webSocketTask?.resume()
@@ -255,11 +256,21 @@ final class GatewayClient {
         }
 
         while !Task.isCancelled {
-            guard let message = try? await webSocketTask?.receive() else {
+            let message: URLSessionWebSocketTask.Message
+            do {
+                guard let msg = try await webSocketTask?.receive() else {
+                    timeout.cancel()
+                    let error: GatewayClientError = handshakeTimedOut ? .timeout : .connectionFailed
+                    NSLog("[GW] receive() returned nil (task deallocated) — \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+                message = msg
+            } catch {
                 timeout.cancel()
-                let error: GatewayClientError = handshakeTimedOut ? .timeout : .connectionFailed
-                NSLog("[GW] receive() returned nil — \(error)")
-                continuation.resume(throwing: error)
+                let gwError: GatewayClientError = handshakeTimedOut ? .timeout : .connectionFailed
+                NSLog("[GW] receive() threw: %@ — reporting as %@", "\(error)", "\(gwError)")
+                continuation.resume(throwing: gwError)
                 return
             }
 
@@ -273,9 +284,16 @@ final class GatewayClient {
 
             if event == "connect.challenge" {
                 let payload = dict["payload"] as? [String: Any] ?? [:]
-                NSLog("[GW] got challenge, responding...")
+                NSLog("[GW] got challenge, nonce=%@", payload["nonce"] as? String ?? "nil")
                 try await handleChallenge(payload: payload)
                 NSLog("[GW] challenge response sent")
+                continue
+            }
+
+            // Log any unexpected message during handshake
+            if type_ != "res" {
+                NSLog("[GW] handshake: unexpected msg type=%@ event=%@ keys=%@",
+                      type_ ?? "nil", event ?? "nil", "\(dict.keys.sorted())")
                 continue
             }
 
@@ -405,6 +423,9 @@ final class GatewayClient {
         ]
 
         let data = try JSONSerialization.data(withJSONObject: connectMsg)
+        if let json = String(data: data, encoding: .utf8) {
+            NSLog("[GW] sending connect msg: %@", json)
+        }
         try await webSocketTask?.send(.data(data))
     }
 
@@ -521,6 +542,28 @@ struct AnyCodable: Codable {
         case let v as Double: try container.encode(v)
         case let v as String: try container.encode(v)
         default: try container.encodeNil()
+        }
+    }
+}
+
+// MARK: - URLSession Delegate for WebSocket diagnostics
+
+private final class WebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable {
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
+        NSLog("[GW-delegate] WebSocket opened, protocol=%@", `protocol` ?? "nil")
+    }
+
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "nil"
+        NSLog("[GW-delegate] WebSocket closed, code=%d reason=%@", closeCode.rawValue, reasonStr)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            NSLog("[GW-delegate] task completed with error: %@", "\(error)")
+            if let httpResponse = task.response as? HTTPURLResponse {
+                NSLog("[GW-delegate] HTTP status=%d headers=%@", httpResponse.statusCode, "\(httpResponse.allHeaderFields)")
+            }
         }
     }
 }

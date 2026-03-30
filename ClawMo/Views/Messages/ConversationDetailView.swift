@@ -210,21 +210,7 @@ struct ConversationDetailView: View {
 
                     plusMenu
 
-                    if store.isAgentWorking(agentId: conversation.agentId) {
-                        Button {
-                            Task {
-                                await store.abortChat(
-                                    sessionKey: conversation.sessionKey,
-                                    agentId: conversation.agentId
-                                )
-                            }
-                        } label: {
-                            Image(systemName: "stop.circle.fill")
-                                .font(.system(size: 22))
-                                .foregroundStyle(.red.opacity(0.8))
-                                .frame(width: 32, height: 32)
-                        }
-                    } else if canSendNow {
+                    if canSendNow {
                         Button { send() } label: {
                             Image(systemName: isSending ? "ellipsis" : "arrow.up.circle.fill")
                                 .font(.system(size: 22))

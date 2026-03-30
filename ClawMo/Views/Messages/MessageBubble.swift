@@ -11,7 +11,6 @@ struct MessageBubble: View {
     var agentId: String?
     var senderName: String?
     var onRetry: (() -> Void)?
-    @State private var showCopied = false
 
     var isUser: Bool { message.role == .user }
 
@@ -47,41 +46,13 @@ struct MessageBubble: View {
                     FileBubble(fileInfo: fileInfo, fileSize: message.fileSize,
                                fileData: message.localImageData, isUser: isUser)
                 } else if hasText {
-                    Group {
-                        if isUser {
-                            SelectableText(text: textOnly, fontSize: 14)
-                        } else {
-                            Markdown(textOnly)
-                                .markdownTheme(.clawMo)
-                                .textSelection(.enabled)
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(
-                        isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
-                    .contextMenu {
-                            Button {
-                                UIPasteboard.general.string = textOnly
-                                Haptics.light()
-                            } label: {
-                                Label("复制", systemImage: "doc.on.doc")
-                            }
-                            if message.sendStatus == .failed, let onRetry {
-                                Button {
-                                    onRetry()
-                                } label: {
-                                    Label("重试", systemImage: "arrow.clockwise")
-                                }
-                            }
-                            Button {
-                                shareText(textOnly)
-                            } label: {
-                                Label("分享", systemImage: "square.and.arrow.up")
-                            }
-                        }
+                    BubbleTextView(text: textOnly, fontSize: 14)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
                 }
 
                 // Local image (sent by user, skip for file messages)
@@ -132,16 +103,32 @@ struct MessageBubble: View {
         }
     }
 
-    private func shareText(_ text: String) {
-        let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            if let popover = av.popoverPresentationController {
-                popover.sourceView = root.view
-                popover.sourceRect = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 0, height: 0)
-            }
-            root.present(av, animated: true)
+}
+
+// MARK: - Bubble Text View (safe attributed text + long-press copy)
+
+struct BubbleTextView: View {
+    let text: String
+    let fontSize: CGFloat
+
+    private var rendered: Text {
+        if let attr = try? AttributedString(
+            markdown: text,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
+            return Text(attr)
         }
+        return Text(verbatim: text)
+    }
+
+    var body: some View {
+        rendered
+            .font(.system(size: fontSize))
+            .foregroundStyle(.white)
+            .onLongPressGesture {
+                UIPasteboard.general.string = text
+                Haptics.light()
+            }
     }
 }
 
@@ -346,6 +333,7 @@ struct EditMenuHost: UIViewRepresentable {
             let config = UIEditMenuConfiguration(identifier: nil, sourcePoint: location)
             interaction.presentEditMenu(with: config)
         }
+
 
         func editMenuInteraction(_ interaction: UIEditMenuInteraction,
                                  menuFor configuration: UIEditMenuConfiguration,

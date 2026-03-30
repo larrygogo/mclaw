@@ -45,7 +45,7 @@ struct MessageCenterView: View {
             Group {
                 if !store.isConnected && !store.isConnecting {
                     notConnectedView
-                } else if store.isConnecting || store.conversations.isEmpty {
+                } else if store.isConnecting {
                     connectingView
                 } else {
                     conversationList
@@ -69,7 +69,7 @@ struct MessageCenterView: View {
                     } else if let agent = store.pendingAgent {
                         store.pendingAgent = nil
                         let sk = "agent:\(agent.id):main"
-                        var conv = Conversation(
+                        let conv = Conversation(
                             id: id, sessionKey: sk, sessionKeys: [sk],
                             agentId: agent.id, displayName: agent.name,
                             avatar: agent.avatar, color: agent.color,

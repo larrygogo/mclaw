@@ -19,22 +19,30 @@ final class SpeechManager {
     }
 
     func start() {
+        userStopped = false
         permissionDenied = false
         SFSpeechRecognizer.requestAuthorization { @Sendable [weak self] status in
             Task { @MainActor [weak self] in
+                guard let self, !self.userStopped else { return }
                 if status != .authorized {
-                    self?.permissionDenied = true
+                    self.permissionDenied = true
                     return
                 }
-                self?.startRecording()
+                self.startRecording()
             }
         }
     }
 
+    /// Whether stop was explicitly requested by user (prevents auto-restart race)
+    private var userStopped = false
+
     func stop() {
+        userStopped = true
         timeoutTask?.cancel()
         timeoutTask = nil
-        audioEngine.stop()
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
@@ -77,11 +85,12 @@ final class SpeechManager {
             let text = result?.bestTranscription.formattedString
             let isFinal = error != nil || (result?.isFinal == true)
             Task { @MainActor [weak self] in
+                guard let self, !self.userStopped else { return }
                 if let text {
-                    self?.transcript = text
+                    self.transcript = text
                 }
                 if isFinal {
-                    self?.stop()
+                    self.stop()
                 }
             }
         }

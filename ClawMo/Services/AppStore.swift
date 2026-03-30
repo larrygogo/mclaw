@@ -50,8 +50,6 @@ final class AppStore {
     let persistence: PersistenceService
     let networkMonitor = NetworkMonitor()
     private(set) var messageService: MessageService!
-    nonisolated(unsafe) private var _networkObserver: Any?
-
     // MARK: - Init
 
     init(modelContainer: ModelContainer? = nil) {
@@ -65,18 +63,12 @@ final class AppStore {
             self?.handleEvent(event, payload: payload)
         }
         networkMonitor.start()
-        _networkObserver = NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { @Sendable [weak self] _ in
+        NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { @Sendable [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, !self.gateway.isConnected, !self.isMockMode,
                       let active = self.gateways.first(where: { $0.id == self.activeGatewayId }) else { return }
                 await self.connect(to: active)
             }
-        }
-    }
-
-    deinit {
-        if let observer = _networkObserver {
-            NotificationCenter.default.removeObserver(observer)
         }
     }
 
@@ -218,6 +210,9 @@ final class AppStore {
             return
         }
 
+        // Prevent concurrent connect calls — second call would cancel the first
+        guard !isConnecting else { return }
+
         isConnecting = true
         connectionError = nil
 
@@ -237,13 +232,21 @@ final class AppStore {
             isConnecting = false
             Haptics.success()
 
-            if let rawAgents = try? await gateway.listAgents() {
+            do {
+                let rawAgents = try await gateway.listAgents()
                 agentList = ConversationService.buildAgentList(rawAgents)
+                NSLog("[store] listAgents OK, count=%d", agentList.count)
+            } catch {
+                NSLog("[store] listAgents FAILED: %@", "\(error)")
             }
 
-            if let result = try? await gateway.listSessions(limit: 1000),
-               let sessions = result["sessions"] as? [[String: Any]] {
+            do {
+                let result = try await gateway.listSessions(limit: 1000)
+                let sessions = result["sessions"] as? [[String: Any]] ?? []
                 conversations = ConversationService.buildConversations(from: sessions, agents: agentList)
+                NSLog("[store] listSessions OK, sessions=%d conversations=%d", sessions.count, conversations.count)
+            } catch {
+                NSLog("[store] listSessions FAILED: %@", "\(error)")
             }
 
             activeGatewayId = config.id
@@ -252,12 +255,8 @@ final class AppStore {
             loadCachedMessages()
             updateConversationPreviews()
 
-            let snapshot = conversations
-            Task {
-                for conv in snapshot {
-                    await fetchAllSessions(for: conv)
-                }
-            }
+            // Queue-load recent messages for all conversations (30 msgs each)
+            Task { await preloadConversations() }
         } catch {
             isConnecting = false
             if let gwErr = error as? GatewayClientError, case .pairingRequired(let deviceId, let requestId) = gwErr {
@@ -400,6 +399,32 @@ final class AppStore {
                 text: reply, timestamp: Date(), runId: nil
             ))
         }
+    }
+
+    // MARK: - Preload (queue-load 30 msgs per conversation sequentially)
+
+    private func preloadConversations() async {
+        let sorted = conversations.sorted { $0.lastTimestamp > $1.lastTimestamp }
+        for conv in sorted {
+            guard isConnected else { break }
+            // Only load the latest session key, 30 messages
+            guard let key = conv.allSessionKeys.first else { continue }
+            // Skip if already loaded
+            guard conv.loadedSessionCount == 0 else { continue }
+            let agentId = MessageService.agentIdFromSessionKey(key) ?? conv.agentId
+            do {
+                let hist = try await gateway.chatHistory(sessionKey: key, limit: 30)
+                messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
+                if let i = conversations.firstIndex(where: { $0.id == conv.id }) {
+                    conversations[i].loadedSessionCount = 1
+                    conversations[i].historyLoaded = true
+                    if conv.allSessionKeys.count <= 1 { conversations[i].fullyLoaded = true }
+                }
+            } catch {
+                NSLog("[preload] %@ FAILED: %@", key, "\(error)")
+            }
+        }
+        updateConversationPreviews()
     }
 
     // MARK: - Fetch Sessions
