@@ -1,6 +1,8 @@
 import Foundation
-import Speech
-import AVFoundation
+@preconcurrency import Speech
+@preconcurrency import AVFoundation
+
+private let speechAudioQueue = DispatchQueue(label: "clawmo.speech.audio")
 
 @MainActor @Observable
 final class SpeechManager {
@@ -89,14 +91,12 @@ final class SpeechManager {
 
     // MARK: - Static helpers (nonisolated, run on background queue)
 
-    private static let audioQueue = DispatchQueue(label: "clawmo.speech.audio")
-
     private nonisolated static func setupAndStartEngine(
         _ engine: AVAudioEngine,
         request: SFSpeechAudioBufferRecognitionRequest,
         completion: @escaping @Sendable (Bool) -> Void
     ) {
-        audioQueue.async {
+        speechAudioQueue.async {
             let audioSession = AVAudioSession.sharedInstance()
             try? audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
             try? audioSession.setActive(true, options: .notifyOthersOnDeactivation)
@@ -119,7 +119,7 @@ final class SpeechManager {
     }
 
     private nonisolated static func stopEngine(_ engine: AVAudioEngine) {
-        audioQueue.async {
+        speechAudioQueue.async {
             if engine.isRunning { engine.stop() }
             engine.inputNode.removeTap(onBus: 0)
         }
