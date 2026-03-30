@@ -10,6 +10,10 @@
 		468BFED72F76DAF800F5B540 /* ClawMo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClawMo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXBuildFile section */
+		468BFEF02F76DB0100F5B540 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 468BFEEF2F76DB0100F5B540 /* MarkdownUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		468BFED92F76DAF800F5B540 /* ClawMo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				468BFEF02F76DB0100F5B540 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = ClawMo;
 			packageProductDependencies = (
+				468BFEEF2F76DB0100F5B540 /* MarkdownUI */,
 			);
 			productName = ClawMo;
 			productReference = 468BFED72F76DAF800F5B540 /* ClawMo.app */;
@@ -94,6 +100,9 @@
 				Base,
 			);
 			mainGroup = 468BFECE2F76DAF800F5B540;
+			packageReferences = (
+				468BFEEE2F76DB0100F5B540 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 468BFED82F76DAF800F5B540 /* Products */;
@@ -323,6 +332,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		468BFEEE2F76DB0100F5B540 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		468BFEEF2F76DB0100F5B540 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 468BFEEE2F76DB0100F5B540 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 468BFECF2F76DAF800F5B540 /* Project object */;
 }
