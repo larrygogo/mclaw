@@ -213,26 +213,6 @@ final class AppStore {
         isConnecting = true
         connectionError = nil
 
-        // Precheck with temporary client
-        let probe = GatewayClient()
-        do {
-            try await probe.connect(url: config.url, token: config.token)
-            probe.disconnect()
-        } catch {
-            probe.disconnect()
-            isConnecting = false
-            if let gwErr = error as? GatewayClientError, case .pairingRequired(let deviceId, let requestId) = gwErr {
-                isPairingRequired = true
-                pairingDeviceId = deviceId
-                pairingRequestId = requestId
-                connectionError = nil
-            } else {
-                connectionError = error.localizedDescription
-            }
-            return
-        }
-
-        // Precheck passed — do the real switch
         gateway.disconnect()
         isConnected = false
         agentList = []
