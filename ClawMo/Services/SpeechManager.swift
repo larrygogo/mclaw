@@ -2,7 +2,7 @@ import Foundation
 @preconcurrency import Speech
 @preconcurrency import AVFoundation
 
-private let speechAudioQueue = DispatchQueue(label: "clawmo.speech.audio")
+private nonisolated(unsafe) let speechAudioQueue = DispatchQueue(label: "clawmo.speech.audio")
 
 @MainActor @Observable
 final class SpeechManager {
