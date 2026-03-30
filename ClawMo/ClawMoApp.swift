@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+@preconcurrency import AVFoundation
 
 @main
 struct ClawMoApp: App {
@@ -45,7 +46,31 @@ struct ClawMoApp: App {
             ContentView()
                 .environment(store)
                 .preferredColorScheme(.dark)
+                .onAppear { Self.warmup() }
         }
         .modelContainer(modelContainer)
+    }
+
+    /// Pre-warm keyboard and audio engine on launch to eliminate first-tap lag
+    private static func warmup() {
+        // Keyboard: add a hidden text field, briefly make it first responder
+        DispatchQueue.main.async {
+            let window = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first?.windows.first
+            let tf = UITextField(frame: .zero)
+            tf.autocorrectionType = .no
+            window?.addSubview(tf)
+            tf.becomeFirstResponder()
+            tf.resignFirstResponder()
+            tf.removeFromSuperview()
+        }
+        // Audio session: initialize on background to avoid main-thread cost
+        DispatchQueue.global(qos: .utility).async {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playAndRecord, mode: .measurement, options: .duckOthers)
+            try? session.setActive(true)
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 }
