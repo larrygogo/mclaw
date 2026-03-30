@@ -29,7 +29,11 @@ final class PersistenceService {
         for msg in messages {
             context.insert(PersistedMessage(from: msg, gatewayId: gatewayId))
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            NSLog("[persistence] save %d messages failed: %@", messages.count, "\(error)")
+        }
     }
 
     @MainActor
