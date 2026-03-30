@@ -2,16 +2,16 @@ import Foundation
 import Speech
 import AVFoundation
 
-@Observable
+@MainActor @Observable
 final class SpeechManager {
-    @MainActor var isRecording = false
-    @MainActor var transcript = ""
-    @MainActor var permissionDenied = false
+    var isRecording = false
+    var transcript = ""
+    var permissionDenied = false
 
     private var recognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
+    private nonisolated(unsafe) let audioEngine = AVAudioEngine()
     private var timeoutTask: Task<Void, Never>?
     private var userStopped = false
 
@@ -19,7 +19,6 @@ final class SpeechManager {
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-Hans"))
     }
 
-    @MainActor
     func start() {
         userStopped = false
         permissionDenied = false
@@ -35,27 +34,19 @@ final class SpeechManager {
         }
     }
 
-    @MainActor
     func stop() {
         userStopped = true
         timeoutTask?.cancel()
         timeoutTask = nil
-        isRecording = false
-        // Audio cleanup on background to avoid blocking main thread
-        let engine = audioEngine
-        let request = recognitionRequest
-        let task = recognitionTask
+        if audioEngine.isRunning { audioEngine.stop() }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
-        Task.detached {
-            if engine.isRunning { engine.stop() }
-            engine.inputNode.removeTap(onBus: 0)
-            request?.endAudio()
-            task?.cancel()
-        }
+        isRecording = false
     }
 
-    @MainActor
     private func startRecording() {
         transcript = ""
         recognitionTask?.cancel()
@@ -75,23 +66,15 @@ final class SpeechManager {
             request.append(buffer)
         }
 
-        // Start audio engine on background thread to avoid blocking UI
-        let engine = audioEngine
-        engine.prepare()
-        Task.detached { [weak self] in
-            try? engine.start()
-            await MainActor.run { [weak self] in
-                self?.isRecording = true
-            }
-        }
+        audioEngine.prepare()
+        try? audioEngine.start()
+        isRecording = true
 
         // Auto-stop after 60 seconds
         timeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(60))
-            await MainActor.run { [weak self] in
-                guard let self, self.isRecording else { return }
-                self.stop()
-            }
+            guard let self, self.isRecording else { return }
+            self.stop()
         }
 
         recognitionTask = recognizer?.recognitionTask(with: request) { @Sendable [weak self] result, error in
