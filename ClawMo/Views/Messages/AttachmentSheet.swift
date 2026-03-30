@@ -6,19 +6,20 @@ private struct AttachItem: View {
     let label: String
 
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: Theme.radiusL)
-                    .fill(Color.white.opacity(0.06))
-                    .frame(height: 70)
-                Image(systemName: icon)
-                    .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundStyle(.white.opacity(0.6))
             Text(label)
                 .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.5))
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 76)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.radiusL)
+                .fill(Color.white.opacity(0.06))
+        )
     }
 }
 
