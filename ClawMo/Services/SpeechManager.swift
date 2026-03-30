@@ -74,11 +74,13 @@ final class SpeechManager {
         }
 
         recognitionTask = recognizer?.recognitionTask(with: request) { @Sendable [weak self] result, error in
+            let text = result?.bestTranscription.formattedString
+            let isFinal = error != nil || (result?.isFinal == true)
             Task { @MainActor [weak self] in
-                if let result {
-                    self?.transcript = result.bestTranscription.formattedString
+                if let text {
+                    self?.transcript = text
                 }
-                if error != nil || (result?.isFinal == true) {
+                if isFinal {
                     self?.stop()
                 }
             }
