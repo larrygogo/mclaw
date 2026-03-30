@@ -399,14 +399,21 @@ final class AppStore {
     func fetchAllSessions(for conversation: Conversation) async {
         let keys = conversation.allSessionKeys
         let startIndex = conversation.loadedSessionCount
+        NSLog("[fetch] %@ sessions=%d start=%d kind=%@",
+              conversation.id, keys.count, startIndex,
+              conversation.kind == .a2a ? "a2a" : "user")
         for index in startIndex..<keys.count {
             let key = keys[index]
             let agentId = MessageService.agentIdFromSessionKey(key) ?? conversation.agentId
+            let beforeCount = messages.count
             do {
                 let hist = try await gateway.chatHistory(sessionKey: key, limit: 200)
+                let msgCount = (hist["messages"] as? [[String: Any]])?.count ?? 0
                 messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
+                let added = messages.count - beforeCount
+                NSLog("[fetch] %@ → api=%d added=%d total=%d", key, msgCount, added, messages.count)
             } catch {
-                NSLog("[fetch] chatHistory failed for %@: %@", key, "\(error)")
+                NSLog("[fetch] chatHistory FAILED for %@: %@", key, "\(error)")
             }
             if let i = conversations.firstIndex(where: { $0.id == conversation.id }) {
                 conversations[i].loadedSessionCount = index + 1
