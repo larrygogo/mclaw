@@ -72,6 +72,12 @@ final class AppStore {
         }
     }
 
+    deinit {
+        if let observer = networkObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
     // MARK: - Cache
 
     func loadCachedMessages() {
@@ -406,19 +412,23 @@ final class AppStore {
             let key = keys[index]
             let agentId = MessageService.agentIdFromSessionKey(key) ?? conversation.agentId
             let beforeCount = messages.count
+            var loadSuccess = false
             do {
                 let hist = try await gateway.chatHistory(sessionKey: key, limit: 200)
                 let msgCount = (hist["messages"] as? [[String: Any]])?.count ?? 0
                 messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
                 let added = messages.count - beforeCount
                 NSLog("[fetch] %@ → api=%d added=%d total=%d", key, msgCount, added, messages.count)
+                loadSuccess = true
             } catch {
                 NSLog("[fetch] chatHistory FAILED for %@: %@", key, "\(error)")
             }
             if let i = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                conversations[i].loadedSessionCount = index + 1
+                if loadSuccess {
+                    conversations[i].loadedSessionCount = index + 1
+                }
                 if !conversations[i].historyLoaded { conversations[i].historyLoaded = true }
-                if index + 1 >= keys.count { conversations[i].fullyLoaded = true }
+                if loadSuccess && index + 1 >= keys.count { conversations[i].fullyLoaded = true }
             }
         }
         updateConversationPreviews()
