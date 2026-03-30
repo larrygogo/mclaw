@@ -46,13 +46,19 @@ struct MessageBubble: View {
                     FileBubble(fileInfo: fileInfo, fileSize: message.fileSize,
                                fileData: message.localImageData, isUser: isUser)
                 } else if hasText {
-                    BubbleTextView(text: textOnly, fontSize: 14)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
+                    Group {
+                        if isUser {
+                            BubbleTextView(text: textOnly, fontSize: 14)
+                        } else {
+                            SelectableText(text: textOnly, fontSize: 14)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
                 }
 
                 // Local image (sent by user, skip for file messages)
