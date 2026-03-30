@@ -75,6 +75,13 @@ struct GatewayError: Codable {
     let message: String
 }
 
+// MARK: - Sendable wrapper for untyped JSON payloads
+
+struct GatewayPayload: @unchecked Sendable {
+    let raw: [String: Any]
+    static let empty = GatewayPayload(raw: [:])
+}
+
 // MARK: - GatewayClient
 
 typealias EventHandler = @MainActor @Sendable (String, [String: Any]) -> Void
@@ -88,7 +95,7 @@ final class GatewayClient {
     private var urlSession: URLSession?
     private var gatewayURL = ""
     private var gatewayToken = ""
-    private var pendingRequests: [String: CheckedContinuation<[String: Any], Error>] = [:]
+    private var pendingRequests: [String: CheckedContinuation<GatewayPayload, Error>] = [:]
     private var timeoutTasks: [String: Task<Void, Never>] = [:]
     private var eventHandlers: [EventHandler] = []
     private var suppressReconnect = false
@@ -171,7 +178,7 @@ final class GatewayClient {
         let msg: [String: Any] = ["type": "req", "id": id, "method": method, "params": params]
         let data = try JSONSerialization.data(withJSONObject: msg)
 
-        return try await withCheckedThrowingContinuation { continuation in
+        let payload = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<GatewayPayload, Error>) in
             pendingRequests[id] = continuation
 
             // Send task
@@ -195,6 +202,7 @@ final class GatewayClient {
                 }
             }
         }
+        return payload.raw
     }
 
     func listAgents() async throws -> [[String: Any]] {
@@ -329,7 +337,7 @@ final class GatewayClient {
         if type_ == "res", let id, let continuation = pendingRequests.removeValue(forKey: id) {
             timeoutTasks.removeValue(forKey: id)?.cancel()
             if dict["ok"] as? Bool == true {
-                continuation.resume(returning: dict["payload"] as? [String: Any] ?? [:])
+                continuation.resume(returning: GatewayPayload(raw: dict["payload"] as? [String: Any] ?? [:]))
             } else {
                 let msg = (dict["error"] as? [String: Any])?["message"] as? String ?? "request failed"
                 continuation.resume(throwing: GatewayClientError.authFailed(msg))
