@@ -63,17 +63,21 @@ final class MessageService {
             return
         }
 
-        guard !store.messages.contains(where: {
-            $0.id == msg.id ||
-            ($0.sessionKey == msg.sessionKey && $0.role == msg.role && $0.text == msg.text
-             && abs($0.timestamp.timeIntervalSince(msg.timestamp)) < 5)
-        }) else { return }
+        // Fast ID check first
+        if store.messages.contains(where: { $0.id == msg.id }) { return }
+
+        // Content dedup fallback
+        if store.messages.contains(where: {
+            $0.sessionKey == msg.sessionKey && $0.role == msg.role && $0.text == msg.text
+            && abs($0.timestamp.timeIntervalSince(msg.timestamp)) < 5
+        }) { return }
+
         store.messages.append(msg)
         if store.messages.count > 2000 {
             store.messages.removeFirst(store.messages.count - 2000)
         }
         store.persistMessages([msg])
-        store.updateConversationPreviews()
+        store.updateConversationPreview(for: msg)
     }
 
     // MARK: - Event handlers
@@ -154,7 +158,11 @@ final class MessageService {
     func parseHistory(_ hist: [String: Any], sessionKey: String, agentId: String) {
         guard let store else { return }
         guard let msgs = hist["messages"] as? [[String: Any]] else { return }
+
+        // Build ID set for O(1) lookups instead of O(n) contains()
+        let existingIds = Set(store.messages.map(\.id))
         var newMessages: [ChatMessage] = []
+        var newIds = Set<String>()
 
         for m in msgs {
             let role = m["role"] as? String
@@ -188,7 +196,7 @@ final class MessageService {
 
             let openclaw = m["__openclaw"] as? [String: Any]
             let msgId = openclaw?["id"] as? String
-                ?? "hist-\(sessionKey)-\(openclaw?["seq"] as? Int ?? Int(ts.timeIntervalSince1970))-\(role ?? "x")"
+                ?? "hist-\(sessionKey)-\(openclaw?["seq"] as? Int ?? Int(ts.timeIntervalSince1970 * 1000))-\(role ?? "x")"
 
             let msgRole: MessageRole = role == "assistant" ? .agent : .user
 
@@ -204,18 +212,17 @@ final class MessageService {
                 continue
             }
 
+            // O(1) ID check instead of O(n) contains(where:)
+            guard !existingIds.contains(msgId) && !newIds.contains(msgId) else { continue }
+
+            // Content dedup — still needed for messages without stable IDs
             let isDuplicate = store.messages.contains(where: {
-                $0.id == msgId ||
-                ($0.sessionKey == sessionKey && $0.role == msgRole && $0.text == text
-                 && abs($0.timestamp.timeIntervalSince(ts)) < 5)
+                $0.sessionKey == sessionKey && $0.role == msgRole && $0.text == text
+                && abs($0.timestamp.timeIntervalSince(ts)) < 5
             })
             guard !isDuplicate else { continue }
-            guard !newMessages.contains(where: {
-                $0.id == msgId ||
-                ($0.sessionKey == sessionKey && $0.role == msgRole && $0.text == text
-                 && abs($0.timestamp.timeIntervalSince(ts)) < 5)
-            }) else { continue }
 
+            newIds.insert(msgId)
             newMessages.append(ChatMessage(
                 id: msgId, sessionKey: sessionKey, agentId: agentId,
                 role: msgRole, text: text, timestamp: ts, runId: nil
