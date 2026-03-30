@@ -70,7 +70,10 @@ struct ImageViewer: View {
                         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
                         Haptics.success()
                         showSaveToast = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSaveToast = false }
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(1.5))
+                            showSaveToast = false
+                        }
                     } label: {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 16, weight: .semibold))

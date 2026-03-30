@@ -192,7 +192,8 @@ struct ChatTableView: UIViewRepresentable {
                !loadMoreTriggered {
                 loadMoreTriggered = true
                 parent.onMountMore()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(1))
                     self?.loadMoreTriggered = false
                 }
             }

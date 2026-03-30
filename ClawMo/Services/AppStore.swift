@@ -65,10 +65,12 @@ final class AppStore {
             self?.handleEvent(event, payload: payload)
         }
         networkMonitor.start()
-        networkObserver = NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { [weak self] _ in
-            guard let self, !self.gateway.isConnected, !self.isMockMode,
-                  let active = self.gateways.first(where: { $0.id == self.activeGatewayId }) else { return }
-            Task { await self.connect(to: active) }
+        networkObserver = NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { @Sendable [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, !self.gateway.isConnected, !self.isMockMode,
+                      let active = self.gateways.first(where: { $0.id == self.activeGatewayId }) else { return }
+                await self.connect(to: active)
+            }
         }
     }
 

@@ -77,7 +77,7 @@ struct GatewayError: Codable {
 
 // MARK: - GatewayClient
 
-typealias EventHandler = (String, [String: Any]) -> Void
+typealias EventHandler = @MainActor @Sendable (String, [String: Any]) -> Void
 
 @MainActor @Observable
 final class GatewayClient {
@@ -421,7 +421,7 @@ final class GatewayClient {
                 guard let self, self.isConnected, let ws = self.webSocketTask else { return }
 
                 let pongOk = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
-                    ws.sendPing { error in
+                    ws.sendPing { @Sendable error in
                         cont.resume(returning: error == nil)
                     }
                 }

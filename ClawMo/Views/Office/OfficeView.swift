@@ -243,7 +243,8 @@ struct OrbShape: View {
         .onAppear {
             phase1 = true
             // Offset second phase slightly for organic feel
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(0.6))
                 phase2 = true
             }
         }
@@ -466,11 +467,11 @@ struct AgentDetailSheet: View {
                 store.pendingAgent = agent
                 store.unhideConversation(convId)
                 dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(0.3))
                     store.selectedTab = 1
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        store.pendingConversationId = convId
-                    }
+                    try? await Task.sleep(for: .seconds(0.1))
+                    store.pendingConversationId = convId
                 }
             } label: {
                 Text("发消息")

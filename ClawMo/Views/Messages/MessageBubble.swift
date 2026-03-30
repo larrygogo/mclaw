@@ -358,7 +358,7 @@ struct EditMenuHost: UIViewRepresentable {
 
         func editMenuInteraction(_ interaction: UIEditMenuInteraction,
                                  willDismissMenuFor configuration: UIEditMenuConfiguration) {
-            DispatchQueue.main.async { self.dismissBinding.wrappedValue = Date() }
+            Task { @MainActor in self.dismissBinding.wrappedValue = Date() }
         }
     }
 }

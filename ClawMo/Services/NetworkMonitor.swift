@@ -1,7 +1,7 @@
 import Foundation
 import Network
 
-@Observable
+@MainActor @Observable
 final class NetworkMonitor {
     private(set) var isConnected = true
     private(set) var isCellular = false
@@ -13,7 +13,7 @@ final class NetworkMonitor {
         monitor.pathUpdateHandler = { [weak self] path in
             let satisfied = path.status == .satisfied
             let cellular = path.usesInterfaceType(.cellular)
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 let wasConnected = self.isConnected
                 self.isConnected = satisfied
@@ -30,7 +30,7 @@ final class NetworkMonitor {
         monitor.start(queue: queue)
     }
 
-    func stop() {
+    nonisolated func stop() {
         monitor.cancel()
     }
 }

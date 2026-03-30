@@ -2,8 +2,8 @@ import Foundation
 import Speech
 import AVFoundation
 
-@Observable
-class SpeechManager {
+@MainActor @Observable
+final class SpeechManager {
     var isRecording = false
     var transcript = ""
     var permissionDenied = false
@@ -20,8 +20,8 @@ class SpeechManager {
 
     func start() {
         permissionDenied = false
-        SFSpeechRecognizer.requestAuthorization { [weak self] status in
-            DispatchQueue.main.async {
+        SFSpeechRecognizer.requestAuthorization { @Sendable [weak self] status in
+            Task { @MainActor [weak self] in
                 if status != .authorized {
                     self?.permissionDenied = true
                     return
@@ -69,14 +69,12 @@ class SpeechManager {
         // Auto-stop after 60 seconds
         timeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(60))
-            DispatchQueue.main.async {
-                guard let self, self.isRecording else { return }
-                self.stop()
-            }
+            guard let self, self.isRecording else { return }
+            self.stop()
         }
 
-        recognitionTask = recognizer?.recognitionTask(with: request) { [weak self] result, error in
-            DispatchQueue.main.async {
+        recognitionTask = recognizer?.recognitionTask(with: request) { @Sendable [weak self] result, error in
+            Task { @MainActor [weak self] in
                 if let result {
                     self?.transcript = result.bestTranscription.formattedString
                 }

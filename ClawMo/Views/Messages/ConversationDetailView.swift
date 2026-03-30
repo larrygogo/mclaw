@@ -242,7 +242,8 @@ struct ConversationDetailView: View {
 
                     Button {
                         inputExpanded = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(0.05))
                             isInputFocused = true
                         }
                     } label: {
@@ -310,10 +311,16 @@ struct ConversationDetailView: View {
         .sheet(isPresented: $showAttachSheet) {
             AttachmentSheet(selectedPhotos: $selectedPhotos, onCamera: {
                 showAttachSheet = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { showCamera = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(0.3))
+                    showCamera = true
+                }
             }, onFile: {
                 showAttachSheet = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { showFilePicker = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(0.3))
+                    showFilePicker = true
+                }
             })
             .presentationDetents([.height(180)])
             .presentationDragIndicator(.visible)
