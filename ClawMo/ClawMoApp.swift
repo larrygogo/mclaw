@@ -1,7 +1,5 @@
 import SwiftUI
 import SwiftData
-@preconcurrency import AVFoundation
-@preconcurrency import Speech
 
 @main
 struct ClawMoApp: App {
@@ -52,34 +50,8 @@ struct ClawMoApp: App {
         .modelContainer(modelContainer)
     }
 
-    /// Pre-warm keyboard, audio engine, and haptics on launch to eliminate first-tap lag
+    /// Pre-warm haptic engines on launch
     private static func warmup() {
-        // Haptics: pre-arm feedback generators
         Haptics.warmup()
-
-        // Keyboard: add a hidden text field, briefly make it first responder
-        DispatchQueue.main.async {
-            let window = UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .first?.windows.first
-            let tf = UITextField(frame: .zero)
-            tf.autocorrectionType = .no
-            window?.addSubview(tf)
-            tf.becomeFirstResponder()
-            tf.resignFirstResponder()
-            tf.removeFromSuperview()
-        }
-        // Audio + Speech: initialize on background to avoid main-thread cost
-        DispatchQueue.global(qos: .utility).async {
-            // AVAudioSession
-            let session = AVAudioSession.sharedInstance()
-            try? session.setCategory(.playAndRecord, mode: .measurement, options: .duckOthers)
-            try? session.setActive(true)
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
-
-            // SFSpeechRecognizer: pre-load framework and check authorization
-            let _ = SFSpeechRecognizer(locale: Locale(identifier: "zh-Hans"))
-            SFSpeechRecognizer.requestAuthorization { _ in }
-        }
     }
 }
