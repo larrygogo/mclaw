@@ -306,7 +306,8 @@ final class GatewayClient {
             while !Task.isCancelled, self.isConnected {
                 guard let message = try? await self.webSocketTask?.receive() else {
                     self.isConnected = false
-                    // Resume all pending requests so they fail immediately instead of waiting 30s
+                    for (_, task) in self.timeoutTasks { task.cancel() }
+                    self.timeoutTasks.removeAll()
                     for (_, cont) in self.pendingRequests {
                         cont.resume(throwing: GatewayClientError.disconnected)
                     }
@@ -428,6 +429,8 @@ final class GatewayClient {
                 if !pongOk {
                     NSLog("[GW] ping/pong failed — treating as disconnected")
                     self.isConnected = false
+                    for (_, task) in self.timeoutTasks { task.cancel() }
+                    self.timeoutTasks.removeAll()
                     for (_, cont) in self.pendingRequests {
                         cont.resume(throwing: GatewayClientError.disconnected)
                     }
@@ -454,7 +457,6 @@ final class GatewayClient {
             do {
                 try await self.connect(url: url, token: token)
                 NSLog("[GW] reconnect succeeded")
-                self.reconnectAttempts = 0
             } catch {
                 NSLog("[GW] reconnect failed: %@", "\(error)")
                 guard !self.suppressReconnect else { return }

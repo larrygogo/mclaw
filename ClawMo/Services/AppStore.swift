@@ -446,12 +446,19 @@ final class AppStore {
         }
         let key = keys[nextIndex]
         let agentId = MessageService.agentIdFromSessionKey(key) ?? conversation.agentId
-        if let hist = try? await gateway.chatHistory(sessionKey: key, limit: 200) {
+        var loadSuccess = false
+        do {
+            let hist = try await gateway.chatHistory(sessionKey: key, limit: 200)
             messageService.parseHistory(hist, sessionKey: key, agentId: agentId)
+            loadSuccess = true
+        } catch {
+            NSLog("[fetch] fetchNextSession FAILED for %@: %@", key, "\(error)")
         }
         if let i = conversations.firstIndex(where: { $0.id == conversation.id }) {
-            conversations[i].loadedSessionCount = nextIndex + 1
-            if nextIndex + 1 >= keys.count { conversations[i].fullyLoaded = true }
+            if loadSuccess {
+                conversations[i].loadedSessionCount = nextIndex + 1
+            }
+            if loadSuccess && nextIndex + 1 >= keys.count { conversations[i].fullyLoaded = true }
         }
         updateConversationPreviews()
     }
