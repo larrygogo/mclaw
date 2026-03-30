@@ -44,6 +44,7 @@ struct ClawMoApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .environment(store.chat)
                 .preferredColorScheme(.dark)
                 .onAppear { Self.warmup() }
         }

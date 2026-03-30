@@ -7,6 +7,7 @@ private let mcBg     = Theme.bg
 
 struct OfficeView: View {
     @Environment(AppStore.self) var store
+    @Environment(ChatState.self) var chat
     @State private var selectedAgent: AgentInfo?
 
     var body: some View {
@@ -25,7 +26,7 @@ struct OfficeView: View {
             .navigationTitle("办公室")
         }
         .sheet(item: $selectedAgent) { agent in
-            AgentDetailSheet(agent: agent, state: store.agentStates[agent.id])
+            AgentDetailSheet(agent: agent, state: chat.agentStates[agent.id])
         }
     }
 
@@ -42,7 +43,7 @@ struct OfficeView: View {
             let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(Array(store.agentList.enumerated()), id: \.element.id) { i, agent in
-                    let state = store.agentStates[agent.id]
+                    let state = chat.agentStates[agent.id]
                     AgentCard(agent: agent, state: state, colorIndex: i)
                         .onTapGesture { selectedAgent = agent }
                 }
@@ -55,7 +56,7 @@ struct OfficeView: View {
     }
 
     var statusBar: some View {
-        let working = store.agentList.filter { store.agentStates[$0.id]?.status == .working }.count
+        let working = store.agentList.filter { chat.agentStates[$0.id]?.status == .working }.count
         let total = store.agentList.count
 
         return HStack(spacing: 12) {

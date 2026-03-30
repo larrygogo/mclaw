@@ -22,13 +22,25 @@ final class AppStore {
     var pairingRequestId: String?
 
     var agentList: [AgentInfo] = []
-    var agentStates: [String: AgentState] = [:]
-    var messages: [ChatMessage] = []
     var conversations: [Conversation] = []
-    var mountedCounts: [String: Int] = [:]
     var scrollPositions: [String: String] = [:]
-    var scrollOffsets: [String: CGFloat] = [:]    // conversationId → UITableView contentOffset.y
-    var draftTexts: [String: String] = [:]           // conversationId → draft input text
+
+    /// High-frequency state isolated to prevent unnecessary re-renders in OfficeView/SettingsView
+    let chat = ChatState()
+
+    // Convenience accessors (read/write through ChatState)
+    var messages: [ChatMessage] {
+        get { chat.messages }
+        set { chat.messages = newValue }
+    }
+    var agentStates: [String: AgentState] {
+        get { chat.agentStates }
+        set { chat.agentStates = newValue }
+    }
+    var mountedCounts: [String: Int] {
+        get { chat.mountedCounts }
+        set { chat.mountedCounts = newValue }
+    }
 
     // Hidden conversations
     var hiddenConversationIds: Set<String> = [] {

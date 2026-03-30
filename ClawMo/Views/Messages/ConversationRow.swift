@@ -2,29 +2,17 @@ import SwiftUI
 
 struct ConversationRow: View {
     let conversation: Conversation
-    @Environment(AppStore.self) var store
-
-    private var latestMessage: ChatMessage? {
-        let keys = Set(conversation.allSessionKeys)
-        return store.messages
-            .filter { keys.contains($0.sessionKey) && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .max { $0.timestamp < $1.timestamp }
-    }
 
     var previewText: String {
-        if let msg = latestMessage {
-            if msg.isFileMessage { return "[文件] \(msg.fileInfo?.name ?? "")" }
-            if msg.localImageData != nil { return "[图片]" }
-            let trimmed = msg.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            return String(trimmed.prefix(60))
+        if !conversation.lastMessageText.isEmpty {
+            return conversation.lastMessageText
         }
         return conversation.historyLoaded ? "暂无消息" : "加载中..."
     }
 
     var timeString: String {
-        let ts = latestMessage?.timestamp ?? conversation.lastTimestamp
-        guard ts > .distantPast else { return "" }
-        return formatRowTime(ts)
+        guard conversation.lastTimestamp > .distantPast else { return "" }
+        return formatRowTime(conversation.lastTimestamp)
     }
 
     var body: some View {

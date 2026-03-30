@@ -7,6 +7,7 @@ private let mcBg = Theme.bg
 struct ConversationDetailView: View {
     let conversation: Conversation
     @Environment(AppStore.self) var store
+    @Environment(ChatState.self) var chat
     @State private var isSending = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var pendingImages: [Data] = []
@@ -17,12 +18,12 @@ struct ConversationDetailView: View {
 
     private var inputText: Binding<String> {
         Binding(
-            get: { store.draftTexts[conversation.id] ?? "" },
-            set: { store.draftTexts[conversation.id] = $0 }
+            get: { chat.draftTexts[conversation.id] ?? "" },
+            set: { chat.draftTexts[conversation.id] = $0 }
         )
     }
 
-    private var inputTextValue: String { store.draftTexts[conversation.id] ?? "" }
+    private var inputTextValue: String { chat.draftTexts[conversation.id] ?? "" }
 
     var messages: [ChatMessage] {
         var msgs = store.mountedMessages(for: conversation)
@@ -53,11 +54,11 @@ struct ConversationDetailView: View {
     }
 
     var streamingText: String? {
-        store.agentStates[conversation.agentId]?.streamingText
+        chat.agentStates[conversation.agentId]?.streamingText
     }
 
     var agentError: String? {
-        store.agentStates[conversation.agentId]?.lastError
+        chat.agentStates[conversation.agentId]?.lastError
     }
 
     var body: some View {
@@ -91,8 +92,8 @@ struct ConversationDetailView: View {
                     fullyMounted: fullyMounted,
                     onMountMore: { store.mountMore(for: liveConversation) },
                     onRetry: { msg in Task { await store.retryMessage(msg) } },
-                    savedOffset: store.scrollOffsets[conversation.id],
-                    onOffsetChanged: { store.scrollOffsets[conversation.id] = $0 }
+                    savedOffset: chat.scrollOffsets[conversation.id],
+                    onOffsetChanged: { chat.scrollOffsets[conversation.id] = $0 }
                 )
             }
 
@@ -319,7 +320,7 @@ struct ConversationDetailView: View {
             if speechManager.isRecording {
                 speechManager.stop()
                 if !speechManager.transcript.isEmpty {
-                    store.draftTexts[conversation.id, default: ""] += speechManager.transcript
+                    chat.draftTexts[conversation.id, default: ""] += speechManager.transcript
                 }
             } else {
                 speechManager.start()
@@ -350,7 +351,7 @@ struct ConversationDetailView: View {
         // Compress first image (gateway supports one attachment per message)
         let imageData = pendingImages.first.map { compressImage($0, maxBytes: 4_500_000) }
         let extraImages = pendingImages.dropFirst().map { compressImage($0, maxBytes: 4_500_000) }
-        store.draftTexts[conversation.id] = ""
+        chat.draftTexts[conversation.id] = ""
         pendingImages = []
         selectedPhotos = []
         isSending = true
