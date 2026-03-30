@@ -50,7 +50,7 @@ final class AppStore {
     let persistence: PersistenceService
     let networkMonitor = NetworkMonitor()
     private(set) var messageService: MessageService!
-    private var networkObserver: Any?
+    nonisolated(unsafe) private var _networkObserver: Any?
 
     // MARK: - Init
 
@@ -65,7 +65,7 @@ final class AppStore {
             self?.handleEvent(event, payload: payload)
         }
         networkMonitor.start()
-        networkObserver = NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { @Sendable [weak self] _ in
+        _networkObserver = NotificationCenter.default.addObserver(forName: .networkRestored, object: nil, queue: .main) { @Sendable [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, !self.gateway.isConnected, !self.isMockMode,
                       let active = self.gateways.first(where: { $0.id == self.activeGatewayId }) else { return }
@@ -75,7 +75,7 @@ final class AppStore {
     }
 
     deinit {
-        if let observer = networkObserver {
+        if let observer = _networkObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
