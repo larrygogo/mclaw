@@ -43,27 +43,23 @@ final class ConversationService {
                 let parentAgentId = MessageService.agentIdFromSessionKey(parentKey) ?? "main"
                 let parentAgent = agents.first(where: { $0.id == parentAgentId }) ?? agentInfo
                 let pairKey = [parentAgentId, agentId].sorted().joined(separator: ":")
-                if a2aGroups[pairKey] != nil {
-                    // swiftlint:disable:next force_unwrapping
-                    a2aGroups[pairKey]!.keys.append(key)
-                    // swiftlint:disable:next force_unwrapping
-                    if updatedAt > a2aGroups[pairKey]!.latestUpdatedAt {
-                        // swiftlint:disable:next force_unwrapping
-                        a2aGroups[pairKey]!.latestUpdatedAt = updatedAt
+                if var existing = a2aGroups[pairKey] {
+                    existing.keys.append(key)
+                    if updatedAt > existing.latestUpdatedAt {
+                        existing.latestUpdatedAt = updatedAt
                     }
+                    a2aGroups[pairKey] = existing
                 } else {
                     a2aGroups[pairKey] = A2AGroupInfo(parentAgent: parentAgent, childAgent: agentInfo,
                                                       keys: [key], latestUpdatedAt: updatedAt)
                 }
             } else {
-                if userGroups[agentId] != nil {
-                    // swiftlint:disable:next force_unwrapping
-                    userGroups[agentId]!.keys.append(key)
-                    // swiftlint:disable:next force_unwrapping
-                    if updatedAt > userGroups[agentId]!.latestUpdatedAt {
-                        // swiftlint:disable:next force_unwrapping
-                        userGroups[agentId]!.latestUpdatedAt = updatedAt
+                if var existing = userGroups[agentId] {
+                    existing.keys.append(key)
+                    if updatedAt > existing.latestUpdatedAt {
+                        existing.latestUpdatedAt = updatedAt
                     }
+                    userGroups[agentId] = existing
                 } else {
                     userGroups[agentId] = GroupInfo(agent: agentInfo, keys: [key], latestUpdatedAt: updatedAt)
                 }
