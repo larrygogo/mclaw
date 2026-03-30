@@ -79,7 +79,7 @@ struct GatewayError: Codable {
 
 typealias EventHandler = (String, [String: Any]) -> Void
 
-@Observable
+@MainActor @Observable
 final class GatewayClient {
     private(set) var isConnected = false
     private(set) var isConnecting = false
@@ -129,11 +129,9 @@ final class GatewayClient {
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             Task {
-                do {
-                    try await self.listenForHandshake(continuation: continuation)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
+                // listenForHandshake handles all continuation resumes internally
+                // Do not catch here — avoids double resume fatal error
+                try? await self.listenForHandshake(continuation: continuation)
             }
         }
 
@@ -166,10 +164,10 @@ final class GatewayClient {
         let msg: [String: Any] = ["type": "req", "id": id, "method": method, "params": params]
         let data = try JSONSerialization.data(withJSONObject: msg)
 
-        // Register continuation BEFORE sending to avoid race condition:
-        // if gateway responds before continuation is registered, the response would be dropped
         return try await withCheckedThrowingContinuation { continuation in
             pendingRequests[id] = continuation
+
+            // Send task
             Task {
                 do {
                     try await self.webSocketTask?.send(.data(data))
@@ -177,8 +175,11 @@ final class GatewayClient {
                     if let cont = self.pendingRequests.removeValue(forKey: id) {
                         cont.resume(throwing: error)
                     }
-                    return
                 }
+            }
+
+            // Independent timeout task
+            Task {
                 try? await Task.sleep(for: .seconds(30))
                 if let cont = self.pendingRequests.removeValue(forKey: id) {
                     cont.resume(throwing: GatewayClientError.timeout)
@@ -325,13 +326,11 @@ final class GatewayClient {
             return
         }
 
-        // Events — dispatch to main thread since handlers modify @MainActor state
+        // Events
         if type_ == "event", let event = dict["event"] as? String {
             let payload = dict["payload"] as? [String: Any] ?? [:]
-            DispatchQueue.main.async { [eventHandlers] in
-                for handler in eventHandlers {
-                    handler(event, payload)
-                }
+            for handler in eventHandlers {
+                handler(event, payload)
             }
         }
     }
