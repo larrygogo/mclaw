@@ -1,4 +1,5 @@
 import SwiftUI
+import MarkdownUI
 
 private let mcGreen = Theme.green
 private let mcBg = Theme.bg
@@ -46,14 +47,22 @@ struct MessageBubble: View {
                     FileBubble(fileInfo: fileInfo, fileSize: message.fileSize,
                                fileData: message.localImageData, isUser: isUser)
                 } else if hasText {
-                    SelectableText(text: textOnly, fontSize: 14)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
-                        .contextMenu {
+                    Group {
+                        if isUser {
+                            SelectableText(text: textOnly, fontSize: 14)
+                        } else {
+                            Markdown(textOnly)
+                                .markdownTheme(.clawMo)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        isUser ? AnyShapeStyle(Color(red: 20/255, green: 46/255, blue: 28/255)) : AnyShapeStyle(Theme.surface2)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
+                    .contextMenu {
                             Button {
                                 UIPasteboard.general.string = textOnly
                                 Haptics.light()
