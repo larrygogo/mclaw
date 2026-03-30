@@ -31,7 +31,7 @@ struct AttachmentSheet: View {
         .padding(.bottom, 16)
     }
 
-    func attachItem(icon: String, label: String) -> some View {
+    nonisolated func attachItem(icon: String, label: String) -> some View {
         VStack(spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: Theme.radiusL)
